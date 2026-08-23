@@ -40,11 +40,10 @@ def main() -> int:
             "Coherens is installed but this machine is not configured. On the first relevant "
             "request, proactively explain that you are initializing Coherens, then inspect Git "
             "and GitHub authentication. The canonical public source is "
-            "https://github.com/ChengxiSHE/Coherens.git. Discover or create a private "
-            "Coherens-Vault, register a "
-            "stable machine ID, run Coherens setup and doctor, and report each result. Do not ask "
-            "the user to perform discoverable steps; ask only for authentication or an ambiguous "
-            "account/identity choice."
+            "https://github.com/ChengxiSHE/Coherens.git. Ask the user to create an empty Private "
+            "Coherens-Vault and provide its clone URL, then verify privacy, register a stable "
+            "machine ID, run Coherens setup and doctor, and report machine, Vault, project, and "
+            "sync readiness separately. Do not attempt to create the GitHub repository."
         )
     else:
         root = git_root()
@@ -52,8 +51,10 @@ def main() -> int:
             context = (
                 "Coherens is configured on this machine, but the current Git repository is not "
                 "registered. When the user requests cross-machine work, shared context, or sync, "
-                "proactively run Coherens onboarding before the requested work and report the "
-                "project, workspace, version track, generated files, and validation result."
+                "proactively run Coherens onboarding before the requested work. Before its first "
+                "sync, analyze the existing repository and complete the README-quality Project "
+                "Profile, then report the project, workspace, version track, generated files, and "
+                "validation result."
             )
     if context:
         print(

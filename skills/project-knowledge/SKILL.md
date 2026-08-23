@@ -14,21 +14,44 @@ the knowledge repository.
 
 ## Route the request
 
-- **First machine setup:** Inspect Git and GitHub authentication. Ask only for
-  the private Vault repository when it cannot be inferred. If GitHub CLI is
-  authenticated, look for `Coherens-Vault` in the current account and create it
-  as a private repository when absent. Never create a public Vault. Run `setup`;
-  clone or initialize the Vault and verify its registry. This is the only
-  required machine-level setup. Run `doctor` afterward and resolve every
-  discoverable failure before reporting completion.
+- **First machine setup:** Inspect Git and Git authentication. If the user has
+  not supplied a Vault URL, ask them to create an empty Private
+  `Coherens-Vault` repository and return its clone URL. Never create the
+  repository through a connector, CLI, or browser. Verify that the supplied
+  repository is Private, then run `setup` with `--confirm-private`; clone or
+  initialize the Vault and verify its registry. Run `doctor` afterward and
+  report machine, Vault, project, and sync readiness separately.
 - **Natural-language onboarding:** For requests such as "把当前项目接入知识库",
-  inspect the current Git repository and run `onboard`. Infer project ID,
+  inspect the current Git repository and run `onboard`. A stable origin remote
+  is required. Infer project ID,
   repository, branch/version track, environment, and stable machine ID. Ask only
   when two registered projects are plausible or a value cannot be discovered.
+- **Legacy project migration:** If `doctor` finds a pre-0.3 project without a
+  recorded repository identity or Project Profile, do not continue ordinary
+  synchronization. Require a stable origin and clean code commit, review the
+  existing registry binding, rerun `onboard --force` only to reconcile that
+  reviewed identity, complete the Project Profile, and remove local absolute
+  paths or invalid verified claims from legacy Vault records before validation.
+- **Mandatory first project profile:** Before the first sync of an existing
+  project, perform a one-time repository analysis and complete
+  `projects/<project-id>/PROJECT_PROFILE.md`. Explain what the project does, its
+  scope, architecture and execution flow, directory/module responsibilities,
+  key scripts and interfaces, inputs and outputs, implementation relationships,
+  setup/run/test commands, dependencies and environments, constraints, and the
+  exact files reviewed. Inspect source, configuration, entry points, tests, and
+  existing documentation while excluding generated data, credentials, build
+  artifacts, and vendored dependencies. Replace every placeholder, set
+  `verified_commit` to the current clean code commit, and set `status: active`.
+  Treat this as a README-quality durable project explanation. Subsequent syncs
+  are incremental and must not repeat the full analysis unless the user asks or
+  the architecture has materially changed.
 - **Natural-language synchronization:** For requests such as "把项目 A 同步到仓库",
-  run `publish`. It performs a clean-Vault preflight, fast-forward pull,
-  registration/onboarding when needed, progress synchronization, validation,
-  scoped commit, and push. Inspect and report both code and Vault Git states.
+  ensure onboarding and the mandatory Project Profile are complete, commit the
+  reviewed onboarding/profile changes to the Vault, then run `publish`. It
+  performs a clean-Vault preflight, fast-forward pull, progress synchronization,
+  validation, scoped commit, and push. Inspect and report both code and Vault
+  Git states. A dirty or untracked code state may be logged as `unanchored`, but
+  it must never be reported as a verified commit.
 - **Read context:** Run `locate` from the code project. Open the returned project
   `index.md`, select the context pack that matches the task, and follow only its
   links. Compare every `verified_commit` with the local or target commit. Do not
@@ -62,6 +85,9 @@ the knowledge repository.
 - Do not overwrite unrelated dirty Git changes or use destructive Git commands.
 - Do not infer that one workspace is current from timestamps alone. Match
   `project_id`, `workspace_id`, `version_track`, and Git commit.
+- Do not synchronize a new project until its Project Profile is active and
+  anchored to the current clean code commit.
+- Do not store local absolute project paths in the Vault.
 - Do not promote raw progress automatically. A daily summary is evidence routing,
   not proof that a conclusion is durable.
 - A machine cannot summarize unsynchronized progress from another offline

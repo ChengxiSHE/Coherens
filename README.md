@@ -12,10 +12,10 @@
     <a href="#security-and-scope">Security</a>
   </p>
   <p>
-    <img alt="version 0.2.0" src="https://img.shields.io/badge/version-0.2.0-blue">
+    <img alt="version 0.3.0" src="https://img.shields.io/badge/version-0.3.0-blue">
     <img alt="skills 3" src="https://img.shields.io/badge/skills-3-2ea44f">
     <img alt="knowledge layers 8" src="https://img.shields.io/badge/knowledge_layers-8-0f766e">
-    <img alt="workflow tests 7" src="https://img.shields.io/badge/workflow_tests-7-ca8a04">
+    <img alt="workflow tests 12" src="https://img.shields.io/badge/workflow_tests-12-ca8a04">
     <a href="LICENSE"><img alt="license MIT" src="https://img.shields.io/badge/license-MIT-brightgreen"></a>
   </p>
   <p>If Coherens helps your work, please consider giving the repository a Star <a href="https://github.com/ChengxiSHE/Coherens"><img alt="Star Coherens on GitHub" src="https://img.shields.io/badge/GitHub-Star-181717?logo=github"></a></p>
@@ -50,6 +50,9 @@ what the next agent needs to know.
   synchronize, validate, summarize, and report from a single user intent.
 - **Precision context routing:** read a task-specific context pack instead of
   scanning an entire codebase or knowledge Vault for every session.
+- **README-quality first sync:** analyze an existing project once and preserve
+  its purpose, architecture, modules, scripts, execution flow, commands,
+  dependencies, and constraints in an evidence-bound Project Profile.
 - **Governed accumulation:** separate local progress, endpoint state,
   environment differences, version knowledge, runbooks, decisions, and common
   conclusions by ownership and durability.
@@ -72,21 +75,24 @@ updates, incremental sync, validation, summaries, and graph generation.
 ## Installation
 
 > [!TIP]
-> Give Codex one setup request. Codex should perform the discoverable steps and
-> ask only for authentication, permissions, or a genuinely ambiguous identity.
+> Give Codex one setup request. Codex performs the discoverable steps. When no
+> Vault exists, it asks you to create one empty Private Git repository and send
+> back its clone URL; Coherens never creates the repository on your behalf.
 
 Use this prompt in any Codex environment with Git and network access:
 
 ```text
-Configure Coherens from https://github.com/ChengxiSHE/Coherens.git,
-create or connect my private Coherens-Vault, register this environment,
-run doctor, and tell me whether the current project is ready.
+Configure Coherens from https://github.com/ChengxiSHE/Coherens.git.
+If I have not connected a Vault, tell me to create an empty Private
+Coherens-Vault and wait for its clone URL. Verify the supplied repository is
+Private, connect it, register this environment, run doctor, and report machine,
+Vault, project, and sync readiness separately.
 ```
 
 The `coherens-setup` Skill pins the canonical repository URL, validates the
 plugin identity, checks Git, Python, Codex plugin support, network access, and
-GitHub authentication, then creates or connects the private Vault and registers
-a stable machine or container identity.
+Git authentication, then verifies and connects the user-provided private Vault
+and registers a stable machine or container identity.
 
 A lightweight `SessionStart` hook checks local readiness markers after
 installation. It does not read or pull the Vault. New or changed lifecycle hooks
@@ -101,11 +107,13 @@ Requirements are Python 3.10+, PyYAML 6.x, and Git.
 git clone https://github.com/ChengxiSHE/Coherens.git
 cd Coherens
 python -m pip install -r requirements.txt
-python tools/install_skills.py
+python tools/install_plugin.py
 ```
 
-Restart Codex if locally installed Skills do not appear immediately. The
-repository includes `.codex-plugin/plugin.json` for plugin distribution.
+The installer validates the plugin identity, installs the complete package into
+the personal Codex marketplace, and enables it. Restart Codex if the new Skills
+or SessionStart hook do not appear immediately. `tools/install_skills.py`
+remains available for Skill-only development or non-plugin agent integration.
 
 </details>
 
@@ -132,6 +140,16 @@ Generate the project knowledge graph.
 Explicit Skill invocation remains available, but it is not required for normal
 use.
 
+For a project's first synchronization, Coherens performs one repository-wide
+onboarding analysis and completes `PROJECT_PROFILE.md`. The profile explains the
+project like a durable technical README and is bound to the current clean Git
+commit. Later synchronizations upload only new progress and state changes unless
+the architecture has materially changed.
+
+Projects connected before 0.3 are treated as legacy until their stable origin,
+tracked code, Project Profile, and older synchronized records pass the new
+readiness and privacy checks.
+
 ## Supported Collaboration Scope
 
 ### Endpoints
@@ -157,8 +175,10 @@ that must survive recreation need a persistent Coherens configuration location.
 | `environment` | Operating-system, hardware, container, runtime, and dependency scope. |
 | Git commit | Concrete code state that supports a synchronized claim. |
 
-Coherens never decides that one endpoint is authoritative from timestamps alone.
-It resolves project, workspace, version track, branch, and commit together.
+Coherens requires a stable project origin before onboarding and never decides
+that one endpoint is authoritative from timestamps alone. It resolves project,
+workspace, version track, branch, and commit together. Dirty or untracked code
+may be recorded as `unanchored`, but it is never labeled as verified.
 
 ### Knowledge model
 
@@ -172,6 +192,11 @@ It resolves project, workspace, version track, branch, and commit together.
 | `decisions/` | Durable choices, rationale, alternatives, and effective commits. |
 | `common/` | Conclusions verified across the endpoints and versions where they apply. |
 | `context-packs/` | Small task-specific routes to the exact knowledge an agent needs. |
+
+Each project also has a mandatory `PROJECT_PROFILE.md`. Before the first sync,
+the agent documents the existing project's purpose, architecture, module and
+script responsibilities, interfaces, execution flow, commands, dependencies,
+constraints, and reviewed evidence.
 
 `PROJECT_MAP.md` is the human-readable multi-project entry point.
 `registry.yaml` is the machine registry. Each
@@ -227,10 +252,14 @@ python skills/project-knowledge/scripts/project_knowledge.py validate --knowledg
 python skills/knowledge-graph-view/scripts/knowledge_graph.py --knowledge-root .
 ```
 
-The workflow suite covers empty-Vault setup, environment diagnosis, canonical
-repository pinning, implicit session routing, automatic project registration,
-incremental progress synchronization, repeat publication, daily summaries,
-Markdown validation, bilingual README integrity, and graph generation.
+The 12-test workflow suite covers complete plugin installation, user-confirmed
+Private Vault setup, readiness separation, canonical repository pinning,
+implicit session routing, stable project identity, mandatory first-sync
+profiles, incremental synchronization, unanchored code handling, repeat
+publication, daily summaries, Markdown validation, bilingual README integrity,
+and graph generation.
+Validation also rejects synchronized Markdown that contains a local user home
+path or claims a verified commit while marked `unanchored`.
 
 Validation proves the included deterministic workflows and fixtures. It does not
 claim that every agent-authored knowledge conclusion is correct. Durable
@@ -247,6 +276,8 @@ the project.
   knowledge. Context retrieval is task-driven and bounded.
 - **Write boundary:** local progress is synchronized explicitly and promoted to
   durable knowledge only after review.
+- **Path boundary:** absolute local project paths remain local and are not added
+  to synchronized progress records.
 - **Git safety:** synchronization stops on dirty or diverged Vault state, uses
   fast-forward-only pulls, stages scoped paths, validates before commit, and
   never guesses through conflicts or protected branches.

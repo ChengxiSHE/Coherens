@@ -12,6 +12,7 @@ status: active
 
 | Task | Read first |
 | --- | --- |
+| Understand this project | [Project profile](PROJECT_PROFILE.md), then [baseline context](context-packs/project-baseline.md) |
 | Continue ordinary development | [Main track](versions/main.md), then the relevant common note |
 | Train or infer in Docker | [Docker training context](context-packs/docker-training.md) |
 | Prepare an open-source release | [Version tracks](versions/index.md), then relevant decisions |
@@ -27,4 +28,3 @@ status: active
 - [Decisions](decisions/index.md)
 - [Progress evidence](logs/index.md)
 - [Context packs](context-packs/index.md)
-

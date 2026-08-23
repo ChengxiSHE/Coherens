@@ -1,4 +1,5 @@
 schema_version: 1
 project_id: project-a
 knowledge_repository: example/engineering-knowledge
-
+repository: example/project-a
+identity_status: stable

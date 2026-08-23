@@ -26,6 +26,9 @@ except ImportError as exc:  # pragma: no cover - exercised by runtime setup
 
 FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*(?:\n|\Z)", re.DOTALL)
 MARKDOWN_LINK_RE = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
+LOCAL_HOME_PATH_RE = re.compile(
+    r"(?:/Users/[^/\s`]+/|/home/[^/\s`]+/|[A-Za-z]:\\Users\\[^\\\s`]+\\)"
+)
 REQUIRED_META = {"type", "id", "title", "status"}
 PROJECT_META_TYPES = {
     "collection",
@@ -35,10 +38,21 @@ PROJECT_META_TYPES = {
     "environment",
     "progress-log",
     "project",
+    "project-profile",
     "runbook",
     "version",
     "workspace",
 }
+PROFILE_REQUIRED_SECTIONS = (
+    "## Purpose and scope",
+    "## Architecture and execution flow",
+    "## Directory and module map",
+    "## Key scripts and interfaces",
+    "## Setup, run, and verification",
+    "## Dependencies and environments",
+    "## Known constraints and open questions",
+    "## Evidence reviewed",
+)
 EXCLUDED_KNOWLEDGE_PARTS = {
     ".git",
     "generated",
@@ -50,6 +64,10 @@ EXCLUDED_KNOWLEDGE_PARTS = {
 }
 PRODUCT_NAME = "Coherens"
 CONFIG_ENV = "COHERENS_CONFIG"
+COHERENS_ONLY_TRACKED_PATHS = {
+    ".gitignore",
+    "AGENTS.md",
+}
 
 AGENTS_SECTION = """## Progress Log
 
@@ -58,6 +76,14 @@ For every non-trivial project task, update `PROGRESS.md` before finishing.
 Keep each entry short and include the date, local workspace ID, branch and
 commit, what changed and why, verification, unresolved issues, and whether the
 result should be promoted to shared knowledge.
+
+Treat a commit as verified only when the relevant project files are tracked and
+the working tree is clean. If files are untracked or modified, record that as an
+unresolved version-state issue instead of claiming full verification.
+
+Before the first synchronization of an existing project, complete the
+README-quality `PROJECT_PROFILE.md` in the Vault and bind it to the current clean
+project commit.
 
 Do not record secrets or full terminal output. Do not access or sync the shared
 knowledge repository unless the user explicitly asks to connect, read,
@@ -137,6 +163,10 @@ def git_repository(root: Path) -> str:
     if not remote:
         return root.name
     value = remote.removesuffix(".git").rstrip("/")
+    if value.startswith("file://"):
+        return Path(value.removeprefix("file://")).name or root.name
+    if value.startswith(("/", "./", "../")) or re.match(r"^[A-Za-z]:[\\/]", value):
+        return Path(value).name or root.name
     if ":" in value and not value.startswith(("http://", "https://")):
         value = value.split(":", 1)[1]
     else:
@@ -238,10 +268,31 @@ def git_value(project_root: Path, *args: str, default: str = "unknown") -> str:
 
 def git_state(project_root: Path) -> dict[str, Any]:
     status = git_value(project_root, "status", "--porcelain", default="")
+    tracked_output = git_value(project_root, "ls-files", default="")
+    tracked_files = [line for line in tracked_output.splitlines() if line]
+    meaningful_tracked = [
+        path
+        for path in tracked_files
+        if path not in COHERENS_ONLY_TRACKED_PATHS
+        and not path.startswith(".kb/")
+        and path != "PROGRESS.md"
+    ]
+    commit = git_value(project_root, "rev-parse", "HEAD", default="")
+    remote = git_run(
+        project_root, "config", "--get", "remote.origin.url", check=False
+    ).stdout.strip()
+    dirty = bool(status)
+    version_anchored = bool(commit and meaningful_tracked and not dirty)
     return {
         "branch": git_value(project_root, "branch", "--show-current"),
-        "commit": git_value(project_root, "rev-parse", "HEAD"),
-        "dirty": bool(status),
+        "commit": commit,
+        "dirty": dirty,
+        "remote": remote,
+        "identity_stable": bool(remote),
+        "tracked_file_count": len(tracked_files),
+        "meaningful_tracked_file_count": len(meaningful_tracked),
+        "version_anchored": version_anchored,
+        "code_state": "verified" if version_anchored else "unanchored",
     }
 
 
@@ -277,9 +328,17 @@ def add_gitignore_entries(project_root: Path) -> None:
 def command_setup(args: argparse.Namespace) -> None:
     path = Path(args.vault_root or (Path.home() / "Coherens-Vault")).expanduser().resolve()
     repository = args.vault_repository or ""
+    if not repository and not path.exists():
+        raise KnowledgeError(
+            "Create an empty private Git repository first, then provide its URL with "
+            "--vault-repository"
+        )
+    if repository and not args.confirm_private:
+        raise KnowledgeError(
+            "Refusing to connect an unverified Vault. Confirm that the repository is private "
+            "with --confirm-private"
+        )
     if not path.exists():
-        if not repository:
-            raise KnowledgeError("The Vault does not exist; provide --vault-repository so it can be cloned")
         path.parent.mkdir(parents=True, exist_ok=True)
         result = subprocess.run(
             ["git", "clone", repository, str(path)],
@@ -292,6 +351,19 @@ def command_setup(args: argparse.Namespace) -> None:
             raise KnowledgeError(f"Could not clone the Vault: {result.stderr.strip()}")
     if not (path / ".git").exists():
         raise KnowledgeError(f"The Vault must be a Git repository: {path}")
+    remote = git_run(path, "config", "--get", "remote.origin.url", check=False).stdout.strip()
+    if repository and remote and remote != repository:
+        raise KnowledgeError(
+            f"The local Vault origin is {remote}, not {repository}. Review the mismatch before setup."
+        )
+    if repository and not remote:
+        git_run(path, "remote", "add", "origin", repository)
+        remote = repository
+    repository = repository or remote
+    if not repository:
+        raise KnowledgeError(
+            "The local Vault has no origin. Create an empty private repository and provide its URL."
+        )
     initialized = False
     if not (path / "registry.yaml").exists():
         entries = [item for item in path.iterdir() if item.name != ".git"]
@@ -303,7 +375,6 @@ def command_setup(args: argparse.Namespace) -> None:
         git_run(path, "add", "registry.yaml", "PROJECT_MAP.md")
         git_run(path, "commit", "-m", "coherens: initialize vault")
         initialized = True
-        remote = git_run(path, "config", "--get", "remote.origin.url", check=False).stdout.strip()
         branch = git_value(path, "branch", "--show-current", default="")
         if remote and branch:
             git_run(path, "push", "-u", "origin", branch)
@@ -313,7 +384,8 @@ def command_setup(args: argparse.Namespace) -> None:
         "machine_id": machine_id,
         "environment": detect_environment(),
         "vault_root": str(path),
-        "vault_repository": repository or git_repository(path),
+        "vault_repository": repository,
+        "vault_private_confirmed": True,
     }
     target = config_path()
     write_yaml(target, data)
@@ -341,6 +413,38 @@ def command_doctor(args: argparse.Namespace) -> None:
             stderr=subprocess.DEVNULL,
             check=False,
         ).returncode == 0
+    vault_remote = ""
+    vault_clean = False
+    if vault and (vault / ".git").exists():
+        vault_remote = git_run(
+            vault, "config", "--get", "remote.origin.url", check=False
+        ).stdout.strip()
+        vault_clean = not bool(git_run(vault, "status", "--porcelain").stdout.strip())
+    project_git = git_state(project_root) if project_root else {}
+    project_connected = bool(project_root and (project_root / ".kb" / "project.yaml").exists())
+    project_config = (
+        load_yaml(project_root / ".kb" / "project.yaml") if project_connected and project_root else {}
+    )
+    recorded_repository = str(project_config.get("repository", ""))
+    detected_repository = git_repository(project_root) if project_git.get("remote") and project_root else ""
+    repository_matches = bool(
+        recorded_repository and detected_repository and recorded_repository == detected_repository
+    )
+    project_id = str(project_config.get("project_id", ""))
+    profile_path = vault / "projects" / project_id / "PROJECT_PROFILE.md" if vault and project_id else None
+    profile_meta: dict[str, Any] = {}
+    if profile_path and profile_path.exists():
+        profile_meta, _ = frontmatter_and_body(profile_path.read_text(encoding="utf-8"))
+    profile_active = bool(profile_meta.get("status") == "active")
+    profile_commit = str(profile_meta.get("verified_commit", ""))
+    first_sync_complete = bool(
+        project_root and (project_root / ".kb" / "sync-state.json").exists()
+    )
+    profile_ready = bool(
+        profile_active
+        and profile_commit
+        and (first_sync_complete or profile_commit == project_git.get("commit"))
+    )
     checks = {
         "git_available": git_available,
         "github_cli_available": gh is not None,
@@ -351,27 +455,75 @@ def command_doctor(args: argparse.Namespace) -> None:
         "vault_exists": bool(vault and vault.exists()),
         "vault_is_git": bool(vault and (vault / ".git").exists()),
         "vault_has_registry": bool(vault and (vault / "registry.yaml").exists()),
+        "vault_remote": vault_remote or None,
+        "vault_remote_configured": bool(vault_remote),
+        "vault_clean": vault_clean,
         "current_project_root": str(project_root) if project_root else None,
-        "current_project_connected": bool(project_root and (project_root / ".kb" / "project.yaml").exists()),
+        "current_project_connected": project_connected,
+        "project_repository_remote": project_git.get("remote") or None,
+        "project_repository_recorded": recorded_repository or None,
+        "project_repository_detected": detected_repository or None,
+        "project_repository_matches_remote": repository_matches,
+        "project_identity_stable": bool(project_git.get("identity_stable") and repository_matches),
+        "project_meaningful_tracked_file_count": project_git.get(
+            "meaningful_tracked_file_count", 0
+        ),
+        "project_worktree_clean": not bool(project_git.get("dirty", False)) if project_root else None,
+        "project_version_anchored": bool(project_git.get("version_anchored")),
+        "project_profile": str(profile_path) if profile_path else None,
+        "project_profile_exists": bool(profile_path and profile_path.exists()),
+        "project_profile_active": profile_active,
+        "project_profile_verified_commit": profile_commit or None,
+        "project_profile_matches_current_commit": bool(
+            profile_commit and profile_commit == project_git.get("commit")
+        ),
+        "first_sync_complete": first_sync_complete,
     }
-    required = [
+    machine_required = [
         "git_available",
         "machine_configured",
         "vault_exists",
         "vault_is_git",
         "vault_has_registry",
     ]
-    checks["ready"] = all(bool(checks[key]) for key in required)
+    checks["machine_ready"] = all(bool(checks[key]) for key in machine_required)
+    checks["vault_ready"] = bool(
+        checks["machine_ready"]
+        and checks["vault_remote_configured"]
+        and checks["vault_clean"]
+    )
+    checks["project_ready"] = bool(
+        project_root
+        and project_connected
+        and checks["project_identity_stable"]
+        and checks["project_version_anchored"]
+        and profile_ready
+    )
+    checks["sync_ready"] = bool(checks["vault_ready"] and checks["project_ready"])
+    checks["ready"] = checks["project_ready"] if project_root else checks["vault_ready"]
+    actions: list[str] = []
     if not checks["git_available"]:
-        checks["next_action"] = "Install Git"
-    elif not checks["machine_configured"]:
-        checks["next_action"] = "Run Coherens setup"
-    elif not checks["vault_has_registry"]:
-        checks["next_action"] = "Repair or initialize the private Vault"
-    elif project_root and not checks["current_project_connected"]:
-        checks["next_action"] = "Onboard the current project when shared context or sync is requested"
-    else:
-        checks["next_action"] = "None"
+        actions.append("Install Git")
+    if not checks["machine_configured"]:
+        actions.append("Run Coherens setup")
+    if checks["machine_configured"] and not checks["vault_has_registry"]:
+        actions.append("Repair or initialize the private Vault")
+    if checks["machine_ready"] and not checks["vault_remote_configured"]:
+        actions.append("Connect the Vault to the user-provided private repository")
+    if checks["vault_remote_configured"] and not checks["vault_clean"]:
+        actions.append("Review and commit or discard the Vault's uncommitted changes")
+    if project_root and not project_connected:
+        actions.append("Onboard the current project")
+    if project_connected and not checks["project_identity_stable"]:
+        actions.append(
+            "Configure and reconcile the project origin identity before cross-endpoint synchronization"
+        )
+    if project_connected and not checks["project_version_anchored"]:
+        actions.append("Track and commit the relevant project files in a clean working tree")
+    if project_connected and not profile_ready:
+        actions.append("Complete and activate the mandatory Project Profile before synchronization")
+    checks["next_actions"] = actions
+    checks["next_action"] = actions[0] if actions else "None"
     print(json.dumps(checks, ensure_ascii=False, indent=2))
 
 
@@ -423,6 +575,7 @@ def scaffold_project(
     title: str,
     repository: str,
     version_track: str,
+    force: bool = False,
 ) -> None:
     projects = registry.setdefault("projects", {})
     project = projects.setdefault(
@@ -437,9 +590,11 @@ def scaffold_project(
         },
     )
     if repository and project.get("repository") not in (None, "", repository):
-        raise KnowledgeError(
-            f"Project {project_id} is already bound to {project.get('repository')}, not {repository}"
-        )
+        if not force:
+            raise KnowledgeError(
+                f"Project {project_id} is already bound to {project.get('repository')}, not {repository}"
+            )
+        project["repository"] = repository
     tracks = project.setdefault("version_tracks", [])
     if version_track not in tracks:
         tracks.append(version_track)
@@ -457,7 +612,8 @@ def scaffold_project(
             "knowledge_entry": "index.md",
         }
     )
-    manifest.setdefault("context_packs", {})
+    context_packs = manifest.setdefault("context_packs", {})
+    context_packs.setdefault("project-baseline", "context-packs/project-baseline.md")
     write_yaml(manifest_path, manifest)
     index_meta = {
         "type": "project",
@@ -472,6 +628,7 @@ def scaffold_project(
 
 | Task | Read first |
 | --- | --- |
+| Understand this project | [Project profile](PROJECT_PROFILE.md), then [baseline context](context-packs/project-baseline.md) |
 | Continue development | [Version tracks](versions/index.md), then relevant common knowledge |
 | Work on another machine | [Workspace states](workspaces/index.md) |
 | Investigate a past change | [Progress evidence](logs/index.md) |
@@ -517,6 +674,78 @@ def scaffold_project(
             version_path,
             frontmatter_text(meta, f"# {version_track}\n\nNo shared version-specific conclusions recorded yet."),
         )
+    baseline_path = root / "context-packs" / "project-baseline.md"
+    if not baseline_path.exists():
+        baseline_meta = {
+            "type": "context-pack",
+            "id": f"{project_id}-project-baseline",
+            "title": f"{title} project baseline",
+            "project": project_id,
+            "version_scope": [version_track],
+            "status": "active",
+        }
+        baseline_body = f"""# {title} project baseline
+
+Read the full [project profile](../PROJECT_PROFILE.md) first. Then follow only the
+links needed for the current task.
+
+## Related state
+
+- [Current version track](../versions/{slugify(version_track)}.md)
+- [Workspace states](../workspaces/index.md)
+- [Runbooks](../runbooks/index.md)
+- [Decisions](../decisions/index.md)
+"""
+        write_text(baseline_path, frontmatter_text(baseline_meta, baseline_body))
+    profile_path = root / "PROJECT_PROFILE.md"
+    if not profile_path.exists():
+        profile_meta = {
+            "type": "project-profile",
+            "id": f"{project_id}-project-profile",
+            "title": f"{title} project profile",
+            "project": project_id,
+            "version_scope": [version_track],
+            "status": "draft",
+        }
+        profile_body = f"""# {title} project profile
+
+This profile must be completed by the onboarding agent before the first
+synchronization. It is the durable README-like explanation of the existing
+project, not a copy of the project's own README.
+
+## Purpose and scope
+
+Not recorded yet.
+
+## Architecture and execution flow
+
+Not recorded yet.
+
+## Directory and module map
+
+Not recorded yet.
+
+## Key scripts and interfaces
+
+Not recorded yet.
+
+## Setup, run, and verification
+
+Not recorded yet.
+
+## Dependencies and environments
+
+Not recorded yet.
+
+## Known constraints and open questions
+
+Not recorded yet.
+
+## Evidence reviewed
+
+Not recorded yet.
+"""
+        write_text(profile_path, frontmatter_text(profile_meta, profile_body))
 
 
 def infer_project_id(registry: dict[str, Any], repository: str, root_name: str) -> str:
@@ -532,12 +761,20 @@ def infer_project_id(registry: dict[str, Any], repository: str, root_name: str) 
     return slugify(repository.rsplit("/", 1)[-1] or root_name)
 
 
-def onboard_project(args: argparse.Namespace) -> dict[str, str]:
+def onboard_project(args: argparse.Namespace) -> dict[str, Any]:
     project_root = find_git_root(Path(args.project_root or os.getcwd()))
     knowledge_root = resolve_knowledge_root(args.knowledge_root)
     registry_path = knowledge_root / "registry.yaml"
     registry = load_yaml(registry_path)
     machine = load_machine_config(required=False)
+    remote = git_run(
+        project_root, "config", "--get", "remote.origin.url", check=False
+    ).stdout.strip()
+    if not remote:
+        raise KnowledgeError(
+            "The project has no stable repository identity. Configure its origin remote before "
+            "onboarding or cross-endpoint synchronization."
+        )
     repository = args.repository or git_repository(project_root)
     project_id = require_identifier(
         args.project_id or infer_project_id(registry, repository, project_root.name), "project ID"
@@ -557,7 +794,15 @@ def onboard_project(args: argparse.Namespace) -> dict[str, str]:
             raise KnowledgeError(
                 f"Code project is already connected to {current.get('project_id')}; use --force only after review"
             )
-    scaffold_project(knowledge_root, registry, project_id, title, repository, version_track)
+    scaffold_project(
+        knowledge_root,
+        registry,
+        project_id,
+        title,
+        repository,
+        version_track,
+        force=bool(args.force),
+    )
     project = registry["projects"][project_id]
     project.setdefault("workspaces", {})[workspace_id] = {
         "environment": environment,
@@ -573,6 +818,7 @@ def onboard_project(args: argparse.Namespace) -> dict[str, str]:
         version_track=version_track,
         knowledge_root=str(knowledge_root),
         knowledge_repository=machine.get("vault_repository") or git_repository(knowledge_root),
+        repository=repository,
         force=bool(args.force or config.exists()),
     )
     command_bootstrap(bootstrap_args)
@@ -583,6 +829,11 @@ def onboard_project(args: argparse.Namespace) -> dict[str, str]:
         "workspace_id": workspace_id,
         "version_track": version_track,
         "repository": repository,
+        "repository_identity": "remote",
+        "project_profile": str(
+            knowledge_root / "projects" / project_id / "PROJECT_PROFILE.md"
+        ),
+        "first_sync_requires_active_profile": True,
     }
 
 
@@ -605,6 +856,8 @@ def command_bootstrap(args: argparse.Namespace) -> None:
             "schema_version": 1,
             "project_id": args.project_id,
             "knowledge_repository": args.knowledge_repository,
+            "repository": args.repository,
+            "identity_status": "stable",
         },
     )
     write_yaml(
@@ -654,6 +907,7 @@ def command_locate(args: argparse.Namespace) -> None:
         "workspace_id": workspace["workspace_id"],
         "version_track": workspace["version_track"],
         "knowledge_entry": str(entry),
+        "project_profile": str(entry.parent / "PROJECT_PROFILE.md"),
     }
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
@@ -720,6 +974,44 @@ def read_sync_delta(progress_path: Path, state_path: Path) -> tuple[str, bool, d
     return delta.decode("utf-8"), not appended, new_state
 
 
+def validate_project_profile(
+    knowledge_root: Path,
+    project_id: str,
+    git: dict[str, Any],
+    require_current_commit: bool,
+) -> None:
+    profile_path = knowledge_root / "projects" / project_id / "PROJECT_PROFILE.md"
+    if not profile_path.exists():
+        raise KnowledgeError(
+            "Synchronization requires a completed projects/"
+            f"{project_id}/PROJECT_PROFILE.md"
+        )
+    meta, body = frontmatter_and_body(profile_path.read_text(encoding="utf-8"))
+    if meta.get("status") != "active":
+        raise KnowledgeError(
+            "Synchronization requires an active Project Profile. Inspect the existing "
+            "project, replace every placeholder, add the analyzed Git commit, and set status: active."
+        )
+    missing_sections = [section for section in PROFILE_REQUIRED_SECTIONS if section not in body]
+    if missing_sections:
+        raise KnowledgeError(
+            "Project Profile is missing required sections: " + ", ".join(missing_sections)
+        )
+    if "Not recorded yet." in body:
+        raise KnowledgeError("Project Profile still contains onboarding placeholders")
+    profile_commit = str(meta.get("verified_commit", ""))
+    if not profile_commit:
+        raise KnowledgeError("Project Profile must include the analyzed verified_commit")
+    if require_current_commit and not git["version_anchored"]:
+        raise KnowledgeError(
+            "Initial synchronization requires a clean Git commit containing the relevant project files"
+        )
+    if require_current_commit and profile_commit != git["commit"]:
+        raise KnowledgeError(
+            "Project Profile verified_commit does not match the current clean project commit"
+        )
+
+
 def command_sync(args: argparse.Namespace) -> None:
     project_root = resolve_project_root(args.project_root)
     project, workspace = get_local_identity(project_root)
@@ -735,6 +1027,12 @@ def command_sync(args: argparse.Namespace) -> None:
     state_path = project_root / ".kb" / "sync-state.json"
     delta, resync, new_state = read_sync_delta(progress_path, state_path)
     git = git_state(project_root)
+    validate_project_profile(
+        knowledge_root,
+        project_id,
+        git,
+        require_current_commit=not state_path.exists(),
+    )
     timestamp = now_utc()
     project_dir = knowledge_root / "projects" / project_id
     if not project_dir.exists():
@@ -759,13 +1057,14 @@ def command_sync(args: argparse.Namespace) -> None:
             "branch": git["branch"],
             "commit": git["commit"],
             "dirty": git["dirty"],
+            "code_state": git["code_state"],
             "resync": resync,
             "synced_at": timestamp.isoformat(),
             "status": "active",
         }
         note = (
             f"# Progress from {workspace_id}\n\n"
-            f"Source project: `{project_root}`\n\n"
+            f"Source project ID: `{project_id}`\n\n"
             f"## Uploaded progress\n\n{delta.strip()}\n"
         )
         write_text(log_path, frontmatter_text(meta, note))
@@ -779,16 +1078,21 @@ def command_sync(args: argparse.Namespace) -> None:
         "project": project_id,
         "workspace_scope": [workspace_id],
         "version_scope": [version_track],
-        "verified_commit": git["commit"],
+        "code_state": git["code_state"],
         "status": "active",
         "updated_at": timestamp.isoformat(),
     }
+    if git["version_anchored"]:
+        workspace_meta["verified_commit"] = git["commit"]
+    elif git["commit"]:
+        workspace_meta["base_commit"] = git["commit"]
     latest = f"[Latest progress log]({log_link})" if log_link else "No new progress log"
     workspace_body = f"""# {workspace_id}
 
 - Version track: `{version_track}`
 - Branch: `{git['branch']}`
 - Commit: `{git['commit']}`
+- Code state: `{git['code_state']}`
 - Working tree dirty: `{str(git['dirty']).lower()}`
 - Last synchronized: `{timestamp.isoformat()}`
 - {latest}
@@ -901,11 +1205,15 @@ def command_validate(args: argparse.Namespace) -> None:
         text = path.read_text(encoding="utf-8")
         meta, _ = frontmatter_and_body(text)
         relative = path.relative_to(knowledge_root)
+        if LOCAL_HOME_PATH_RE.search(text):
+            errors.append(f"{relative}: contains a local home-directory path")
         missing = sorted(REQUIRED_META - set(meta))
         if missing:
             errors.append(f"{relative}: missing frontmatter fields {', '.join(missing)}")
         if meta.get("type") in PROJECT_META_TYPES and not meta.get("project") and meta.get("type") != "map":
             errors.append(f"{relative}: project field is required for {meta.get('type')}")
+        if meta.get("code_state") == "unanchored" and meta.get("verified_commit"):
+            errors.append(f"{relative}: unanchored documents cannot claim verified_commit")
         doc_id = meta.get("id")
         if doc_id:
             if str(doc_id) in ids:
@@ -944,6 +1252,12 @@ def command_validate(args: argparse.Namespace) -> None:
 
 
 def command_publish(args: argparse.Namespace) -> None:
+    project_root = find_git_root(Path(args.project_root or os.getcwd()))
+    if not (project_root / ".kb" / "project.yaml").exists():
+        raise KnowledgeError(
+            "The project is not onboarded. Run onboard, complete and review the mandatory "
+            "Project Profile, commit the onboarding knowledge, then publish."
+        )
     knowledge_root = resolve_knowledge_root(args.knowledge_root)
     if not (knowledge_root / ".git").exists():
         raise KnowledgeError(f"The Vault is not a Git repository: {knowledge_root}")
@@ -961,6 +1275,7 @@ def command_publish(args: argparse.Namespace) -> None:
     if remote and branch:
         git_run(knowledge_root, "pull", "--ff-only")
 
+    args.project_root = str(project_root)
     identity = onboard_project(args)
     sync_args = argparse.Namespace(
         project_root=identity["project_root"], knowledge_root=identity["knowledge_root"]
@@ -991,6 +1306,11 @@ def build_parser() -> argparse.ArgumentParser:
     setup.add_argument("--vault-root")
     setup.add_argument("--vault-repository")
     setup.add_argument("--machine-id")
+    setup.add_argument(
+        "--confirm-private",
+        action="store_true",
+        help="Confirm that the user-provided Vault repository is private",
+    )
     setup.set_defaults(func=command_setup)
 
     doctor = sub.add_parser("doctor", help="Check machine, GitHub, Vault, and current-project readiness")
@@ -1018,6 +1338,7 @@ def build_parser() -> argparse.ArgumentParser:
     bootstrap.add_argument("--version-track", default="main")
     bootstrap.add_argument("--knowledge-root", required=True)
     bootstrap.add_argument("--knowledge-repository", required=True)
+    bootstrap.add_argument("--repository", required=True)
     bootstrap.add_argument("--force", action="store_true")
     bootstrap.set_defaults(func=command_bootstrap)
 
@@ -1052,7 +1373,9 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("--strict", action="store_true")
     validate.set_defaults(func=command_validate)
 
-    publish = sub.add_parser("publish", help="Onboard if needed, sync, validate, commit, and push")
+    publish = sub.add_parser(
+        "publish", help="Sync an onboarded and profiled project, validate, commit, and push"
+    )
     publish.add_argument("--project-root")
     publish.add_argument("--knowledge-root")
     publish.add_argument("--project-id")

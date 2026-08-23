@@ -4,5 +4,5 @@ repository: example/project-a
 default_version_track: main
 knowledge_entry: index.md
 context_packs:
+  project-baseline: context-packs/project-baseline.md
   docker-training: context-packs/docker-training.md
-

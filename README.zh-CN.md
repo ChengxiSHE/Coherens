@@ -12,10 +12,10 @@
     <a href="#安全与边界">安全</a>
   </p>
   <p>
-    <img alt="版本 0.2.0" src="https://img.shields.io/badge/version-0.2.0-blue">
+    <img alt="版本 0.3.0" src="https://img.shields.io/badge/version-0.3.0-blue">
     <img alt="Skills 3" src="https://img.shields.io/badge/skills-3-2ea44f">
     <img alt="知识层 8" src="https://img.shields.io/badge/knowledge_layers-8-0f766e">
-    <img alt="流程测试 7" src="https://img.shields.io/badge/workflow_tests-7-ca8a04">
+    <img alt="流程测试 12" src="https://img.shields.io/badge/workflow_tests-12-ca8a04">
     <a href="LICENSE"><img alt="MIT 许可证" src="https://img.shields.io/badge/license-MIT-brightgreen"></a>
   </p>
   <p>如果 Coherens 对你的工作有帮助，欢迎为仓库点亮 Star <a href="https://github.com/ChengxiSHE/Coherens"><img alt="在 GitHub Star Coherens" src="https://img.shields.io/badge/GitHub-Star-181717?logo=github"></a></p>
@@ -46,6 +46,8 @@ Git Vault。下一个端侧或 Agent 可以从可信的项目状态继续工作�
   诊断、同步、校验、汇总和反馈。
 - **精准上下文路由：** 每次会话只读取当前任务的上下文包，而不是扫描整个代码
   仓库或知识 Vault。
+- **README 级首次建档：** 对已有项目进行一次完整分析，将项目目标、架构、模块、
+  脚本、执行流程、命令、依赖和限制沉淀为带有代码证据的 Project Profile。
 - **可治理积累：** 按所有权和持久性区分本地进度、端侧状态、环境差异、版本
   知识、操作手册、决策和公共结论。
 - **Git 原生可审计：** 知识以人类可读的 Markdown 保存，并由 Git 提供来源、
@@ -66,20 +68,22 @@ Setup Skill 负责安装和机器就绪状态；Project Knowledge Skill 负责�
 ## 安装
 
 > [!TIP]
-> 只向 Codex 提出一次配置请求。Codex 应自行完成可发现的步骤，只在身份认证、
-> 权限或真正存在歧义时请求用户确认。
+> 只向 Codex 提出一次配置请求，Codex 会自行完成可发现的步骤。如果尚无 Vault，
+> 它会提示你创建一个空的 Private Git 仓库并返回克隆链接；Coherens 不代替用户
+> 创建仓库。
 
 在具备 Git 和网络访问的任意 Codex 环境中输入：
 
 ```text
-请从 https://github.com/ChengxiSHE/Coherens.git 配置 Coherens，
-创建或连接我的私有 Coherens-Vault，注册当前环境，运行 doctor，
-并告诉我当前项目是否已经就绪。
+请从 https://github.com/ChengxiSHE/Coherens.git 配置 Coherens。
+如果我还没有连接 Vault，请提示我创建一个空的 Private Coherens-Vault，
+并等待我返回克隆链接。请验证该仓库确实为 Private，然后完成连接、注册当前环境、
+运行 doctor，并分别报告机器、Vault、项目和同步就绪状态。
 ```
 
 `coherens-setup` Skill 固定保存官方仓库地址，验证插件身份，检查 Git、Python、
-Codex 插件能力、网络和 GitHub 认证，然后创建或连接私有 Vault，并为当前电脑
-或容器注册稳定身份。
+Codex 插件能力、网络和 Git 认证，然后验证并连接用户提供的 Private Vault，
+并为当前电脑或容器注册稳定身份。
 
 安装完成后，轻量级 `SessionStart` Hook 只检查本地就绪标记，不读取或拉取
 Vault。新的或发生变化的生命周期 Hook 首次运行前需要通过一次 Codex 信任审查。
@@ -93,11 +97,12 @@ Vault。新的或发生变化的生命周期 Hook 首次运行前需要通过一
 git clone https://github.com/ChengxiSHE/Coherens.git
 cd Coherens
 python -m pip install -r requirements.txt
-python tools/install_skills.py
+python tools/install_plugin.py
 ```
 
-本地安装 Skills 后如果没有立即显示，请重新启动 Codex。仓库包含用于插件分发的
-`.codex-plugin/plugin.json`。
+安装器会验证插件身份，将完整插件安装到个人 Codex marketplace 并启用。如果新的
+Skills 或 SessionStart Hook 没有立即显示，请重新启动 Codex。
+`tools/install_skills.py` 仍用于仅安装 Skills 的开发或其他 Agent 集成场景。
 
 </details>
 
@@ -121,6 +126,14 @@ python tools/install_skills.py
 ```
 
 仍然可以显式调用 Skill，但日常使用不需要这样做。
+
+项目第一次同步时，Coherens 会执行一次完整的仓库建档并填写
+`PROJECT_PROFILE.md`。它相当于一份长期维护的技术 README，说明项目目标、架构、
+目录、模块、关键脚本、输入输出、运行方式、依赖与限制，并绑定到当前干净的 Git
+提交。后续同步只处理新增进展和状态变化，除非项目架构发生实质变化。
+
+在 0.3 之前接入的项目会被视为旧版项目，必须补齐稳定 origin、真实代码提交和
+Project Profile，并让既有同步记录通过新的就绪与隐私检查后，才能继续正常同步。
 
 ## 支持的协同范围
 
@@ -147,8 +160,9 @@ python tools/install_skills.py
 | `environment` | 操作系统、硬件、容器、运行时和依赖范围。 |
 | Git 提交 | 支撑同步结论的具体代码状态。 |
 
-Coherens 不会仅凭时间戳判断哪个端侧最可信，而是联合解析项目、工作区、版本轨道、
-分支和提交。
+项目接入前必须具有稳定的 origin 远端。Coherens 不会仅凭时间戳判断哪个端侧最
+可信，而是联合解析项目、工作区、版本轨道、分支和提交。脏工作区或未跟踪源码
+可以记录为 `unanchored`，但不得称为已验证状态。
 
 ### 知识模型
 
@@ -162,6 +176,9 @@ Coherens 不会仅凭时间戳判断哪个端侧最可信，而是联合解析�
 | `decisions/` | 长期决策、理由、替代方案和生效提交。 |
 | `common/` | 在适用端侧和版本中得到验证的公共结论。 |
 | `context-packs/` | 面向具体任务、只包含必要知识的精简路由。 |
+
+每个项目还必须包含 `PROJECT_PROFILE.md`。首次同步前，Agent 必须分析并说明已有
+项目的目标、架构、模块和脚本职责、接口、执行流程、命令、依赖、限制及查阅证据。
 
 `PROJECT_MAP.md` 是供人阅读的多项目入口，`registry.yaml` 是机器注册表，
 每个 `projects/<project-id>/index.md` 将任务路由到有限上下文，Git 提交则把
@@ -211,9 +228,12 @@ python skills/project-knowledge/scripts/project_knowledge.py validate --knowledg
 python skills/knowledge-graph-view/scripts/knowledge_graph.py --knowledge-root .
 ```
 
-流程测试覆盖空 Vault 初始化、环境诊断、官方仓库地址锁定、隐式会话路由、项目
-自动注册、增量进度同步、重复发布、每日汇总、Markdown 校验、双语 README
-完整性和图谱生成。
+12 项流程测试覆盖完整插件安装、用户确认的 Private Vault 初始化、就绪状态拆分、
+官方仓库地址锁定、隐式会话路由、稳定项目身份、首次同步 Profile、增量同步、
+未锚定代码状态、重复发布、每日汇总、Markdown 校验、双语 README 完整性和
+图谱生成。
+校验还会拒绝包含本地用户主目录路径的同步 Markdown，以及在 `unanchored` 状态下
+错误声明 `verified_commit` 的文档。
 
 验证只能证明仓库包含的确定性流程和测试样例，不代表每一条由 Agent 编写的知识
 结论都天然正确。长期结论仍然需要证据、明确适用范围和与项目风险相匹配的审查。
@@ -227,6 +247,7 @@ python skills/knowledge-graph-view/scripts/knowledge_graph.py --knowledge-root .
 - **读取边界：** 普通编码不会自动读取或拉取共享知识，上下文检索由任务触发且
   范围受限。
 - **写入边界：** 本地进度只在显式请求时同步，经过审查后才能提升为长期知识。
+- **路径边界：** 本地项目绝对路径只保存在当前设备，不写入同步进度记录。
 - **Git 安全：** Vault 存在未提交修改或分支分叉时停止同步，只允许快进拉取、
   限定暂存路径、提交前校验，并且不猜测解决冲突或受保护分支问题。
 - **Agent 范围：** Coherens 当前以 Codex 插件形式打包。Markdown、YAML 和

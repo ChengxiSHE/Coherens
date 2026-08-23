@@ -11,9 +11,17 @@ Keep each entry short and include:
 - unresolved issues
 - whether the result should be promoted to shared knowledge
 
+Treat a commit as verified only when the relevant project files are tracked and
+the working tree is clean. Otherwise record the code state as unresolved and
+unanchored.
+
 Do not record passwords, tokens, private keys, or full terminal output.
 Do not access or sync the shared knowledge repository unless the user explicitly
 asks to connect, read, synchronize, summarize, validate, or visualize Coherens
 knowledge.
+
+Before the first synchronization of an existing project, complete the
+README-quality `PROJECT_PROFILE.md` in the Vault and bind it to the current clean
+project commit.
 
 If `PROGRESS.md` does not exist, create it from the project progress template.
