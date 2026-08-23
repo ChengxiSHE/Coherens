@@ -2,114 +2,204 @@
 
 [Chinese README](README.zh-CN.md)
 
-Coherens keeps one project's engineering knowledge coherent across Windows,
-macOS, servers, Docker workspaces, Git versions, Codex, and other coding agents.
-Markdown and Git remain the source of truth; VS Code is enough for reading and
-editing, and the browser graph is a generated view.
+**The project intelligence fabric for multi-endpoint, multi-project agentic engineering.**
+
+> Every project. Every endpoint. One coherent intelligence layer.
+
+Code repositories preserve what changed. Coherens preserves what the
+organization learned: why a decision was made, which environment it applies to,
+which version proved it, what failed before, and what the next agent needs to
+continue with confidence.
+
+Coherens unifies project information from workstations, servers, containers,
+branches, versions, and coding agents into a durable, governed knowledge system.
+It turns fragmented execution into compounding project intelligence.
+
+## The missing layer in modern engineering
+
+Engineering is no longer confined to one repository on one machine. A single
+project may move from Windows development to macOS integration, then to a GPU
+container for training and inference. Teams and individuals operate several
+projects at once, while Codex and other agents begin every new environment with
+different context.
+
+Git moves code, but it does not carry the full operational memory of a project.
+Chat histories capture conversations, but they do not establish authoritative,
+version-aware knowledge. Traditional documentation stores pages, but it does not
+continuously reconcile endpoints, project identities, execution state, and agent
+handoffs.
+
+Coherens is that missing coordination layer.
+
+## What Coherens delivers
+
+| Capability | Product outcome |
+| --- | --- |
+| Multi-endpoint continuity | Continue one project across Windows, macOS, Linux, servers, and Docker without reconstructing its history. |
+| Multi-project intelligence | Maintain independent project identities while accumulating reusable knowledge across an entire engineering portfolio. |
+| Version-grounded truth | Bind knowledge to repositories, branches, tracks, workspaces, and verified Git commits. |
+| Agent-operated lifecycle | Let Codex discover, configure, register, synchronize, validate, and report the workflow from a single user intent. |
+| Precision context routing | Load the smallest task-relevant context pack instead of scanning the repository or Vault on every conversation. |
+| Governed knowledge accumulation | Separate raw progress, endpoint state, environment differences, version knowledge, runbooks, and durable decisions. |
+| Auditable synchronization | Use Markdown and Git for inspectable changes, deterministic validation, provenance, rollback, and collaboration. |
+
+## A shared intelligence fabric, not another notes app
+
+Coherens does not replace Git, your editor, your code repositories, or your
+coding agents. It connects them through a stable project identity and a common
+knowledge model.
+
+```mermaid
+flowchart LR
+    subgraph E["Execution endpoints"]
+        WIN["Windows workstation"]
+        MAC["macOS workstation"]
+        GPU["GPU server"]
+        DOC["Docker workspace"]
+    end
+
+    subgraph C["Coherens project intelligence fabric"]
+        ID["Identity registry"]
+        VAULT["Git-backed knowledge Vault"]
+        ROUTER["Precision context router"]
+        VALIDATE["Validation and provenance"]
+    end
+
+    subgraph A["Agentic engineering"]
+        CODEX["Codex"]
+        OTHER["Other coding agents"]
+    end
+
+    E --> ID
+    ID --> VAULT
+    VAULT --> ROUTER
+    VAULT --> VALIDATE
+    ROUTER --> A
+    A --> VAULT
+```
+
+The result is a continuous intelligence loop:
+
+1. Work happens on the endpoint best suited to the task.
+2. Agents record compact local progress without loading the cloud Vault.
+3. Explicit synchronization converts local progress into versioned evidence.
+4. Curated outcomes become reusable project knowledge, decisions, and runbooks.
+5. The next endpoint or agent receives only the context needed for its task.
+
+Every completed task makes the project easier to understand, operate, transfer,
+and evolve.
+
+## Built for high-friction engineering workflows
+
+- Move development between Windows and macOS without losing decisions or
+  rebuilding project understanding.
+- Transfer code to Docker or GPU servers with the correct version, environment
+  constraints, runbook, and previous failure history.
+- Maintain private, experimental, production, and open-source tracks without
+  mixing their assumptions.
+- Coordinate several active projects and produce project-specific daily
+  summaries from synchronized evidence.
+- Hand work from one coding agent to another without relying on incompatible
+  conversation memory.
+- Preserve the reasoning and operational knowledge that source code alone cannot
+  express.
+
+## Agent-first by design
+
+Coherens is not a workflow the user must memorize. The user states the outcome;
+the agent discovers and operates the process.
+
+For first-time bootstrap, one request is enough:
+
+```text
+Configure Coherens from https://github.com/ChengxiSHE/Coherens.git and complete all checks.
+```
+
+The dedicated `coherens-setup` Skill pins this canonical repository and directs
+Codex to:
+
+1. Inspect Git, Python, Codex plugin support, network access, and GitHub
+   authentication.
+2. Install and validate the official Coherens plugin.
+3. Discover or create a private `Coherens-Vault` repository.
+4. Register a stable identity for the current machine or container.
+5. Diagnose the environment with `doctor` and resolve discoverable failures.
+6. Detect whether the current Git project needs onboarding.
+7. Report completed work and request user action only for authentication,
+   permissions, or genuinely ambiguous choices.
+
+After installation, users continue to describe real engineering goals:
+
+```text
+Continue this project on the GPU server.
+Prepare the open-source release from the current private version.
+Synchronize today's progress for every active project.
+Generate the project knowledge graph.
+```
+
+A lightweight `SessionStart` hook checks only local readiness markers. It does
+not pull or read the Vault. When setup or project registration is missing, it
+gives Codex the routing context needed to handle the next relevant request.
+
+## Knowledge that compounds
+
+Coherens separates information by ownership and durability so the Vault remains
+precise as it grows:
+
+| Knowledge layer | Purpose |
+| --- | --- |
+| `PROGRESS.md` | Lightweight, local, append-only work evidence. |
+| `workspaces/` | The current state of each registered machine or container. |
+| `environments/` | Operating-system, hardware, container, and runtime differences. |
+| `versions/` | Branch, release, experiment, private, and open-source track knowledge. |
+| `runbooks/` | Repeatable procedures with prerequisites and verification. |
+| `decisions/` | Durable choices, rationale, alternatives, and effective commits. |
+| `common/` | Conclusions verified across the relevant endpoints and versions. |
+| `context-packs/` | Small task-specific routes to the exact knowledge an agent needs. |
+
+`PROJECT_MAP.md` provides the human-readable portfolio map. `registry.yaml`
+provides stable machine routing. Each `projects/<project-id>/index.md` provides
+task-level context routing. Git commits anchor claims to concrete code states.
+
+## Trust and control
+
+Coherens is built around explicit boundaries:
+
+- The public product repository and private knowledge Vault are separate Git
+  repositories. Branches are never used as a privacy boundary.
+- Markdown remains human-readable and Git remains the source of provenance.
+- Ordinary coding does not automatically read or synchronize cloud knowledge.
+- Passwords, tokens, private keys, raw chat archives, and full terminal dumps do
+  not belong in the Vault.
+- Synchronization fails closed on dirty or diverged Vault state.
+- Pulls are fast-forward-only, generated changes are scoped, and validation runs
+  before commit and push.
+- Merge conflicts, credential prompts, protected branches, and ambiguous project
+  identities are never resolved by guessing.
 
 ## Repository model
 
-Use two repositories:
+Coherens uses two repositories:
 
-1. **Public `Coherens` repository:** plugin, Skills, scripts, schemas, tests, and
-   example data. Its canonical source is
-   `https://github.com/ChengxiSHE/Coherens.git`.
-2. **Private `Coherens-Vault` repository:** real project knowledge, workspace
-   states, version notes, decisions, runbooks, and progress evidence.
+1. **Public product repository:** plugin, Skills, hooks, deterministic tools,
+   schemas, tests, and examples.
+   `https://github.com/ChengxiSHE/Coherens.git`
+2. **Private intelligence Vault:** real project knowledge, endpoint state,
+   version records, decisions, runbooks, and progress evidence.
+   Default name: `<github-owner>/Coherens-Vault`
 
-Do not separate public and private data with branches. Repository permissions are
-the security boundary.
+## Local development
 
-## Agent-first operation
-
-Coherens is packaged as a Codex plugin. Its `project-knowledge` Skill allows
-implicit invocation, so users speak in terms of intent rather than commands:
-
-- `Configure Coherens.`
-- `Connect the current project to Coherens.`
-- `Synchronize this project's progress to the knowledge Vault.`
-- `Load the shared context needed for Docker training.`
-- `Summarize today's progress for every synchronized project.`
-- `Generate the project knowledge graph.`
-
-The Agent inspects the current Git repository, infers safe defaults, invokes the
-deterministic tools, validates the result, and reports project ID, workspace ID,
-version track, code commit, Vault commit, and push status.
-
-Users do not need to download Coherens first, create a Vault first, choose a
-folder, or remember setup steps. Once Coherens is published in a plugin
-directory, an arbitrary Codex can discover and install it from the request
-`Configure Coherens`. During local development, the Agent can bootstrap it from the
-canonical GitHub repository above instead. The dedicated `coherens-setup` Skill
-contains this exact URL so Codex never has to guess which repository is official.
-
-## One-time machine setup
-
-On the first request, the Agent checks Git and GitHub authentication, discovers
-an existing `Coherens-Vault`, or creates it as a private repository when GitHub
-CLI access is available. It asks for a URL or login only when it cannot safely
-infer the account. The Agent then runs `setup`, which clones or locates the Vault
-and stores only local machine configuration at:
-
-- macOS/Linux: `~/.config/coherens/config.yaml`
-- Windows: `%APPDATA%\Coherens\config.yaml`
-
-An empty private Git repository is initialized automatically. Git credentials
-and author identity must already be available; Coherens never stores or bypasses
-credentials.
-
-After installation, a lightweight session-start hook checks only local setup
-markers. It does not read or pull the Vault. When machine configuration or
-project registration is missing, it reminds Codex to perform and explain the
-next step. Codex hooks require one trust confirmation when first enabled.
-
-## What onboarding creates
-
-In the code repository:
-
-```text
-AGENTS.md                  committed progress rule
-.kb/project.yaml           committed stable project identity
-.kb/workspace.local.yaml   ignored local machine identity
-PROGRESS.md                ignored local progress journal
-.kb/sync-state.json        ignored incremental upload cursor
-```
-
-In the private Vault, Coherens registers the project and workspace, updates
-`PROJECT_MAP.md`, and creates the project's common, environment, workspace,
-version, runbook, decision, log, and context-pack routes.
-
-## Daily behavior
-
-Ordinary coding reads no cloud knowledge. `AGENTS.md` only requires a compact
-local `PROGRESS.md` update for non-trivial work. Cloud access happens when the
-user explicitly asks to connect, read shared context, synchronize, summarize,
-validate, or visualize.
-
-Publishing is fail-closed: Coherens refuses a dirty or diverged Vault, uses a
-fast-forward-only pull, stages only the active project's knowledge paths,
-validates Markdown metadata and links, commits, and pushes. It never resolves a
-merge conflict by guessing.
-
-## Install from a checkout
-
-Requirements are Python 3.10+, PyYAML 6.x, and Git. Install the dependency and
-the bundled Skills:
+Requirements are Python 3.10+, PyYAML 6.x, and Git.
 
 ```text
 python -m pip install -r requirements.txt
 python tools/install_skills.py
 ```
 
-Restart Codex if the Skills do not appear immediately. The repository also
-contains `.codex-plugin/plugin.json` for plugin distribution.
-
-## Source-of-truth routing
-
-1. `PROJECT_MAP.md` is the human-readable project map.
-2. `registry.yaml` stores stable project, workspace, and version identities.
-3. `projects/<project-id>/index.md` routes a task to a small context pack.
-4. Git commits bind knowledge claims to concrete code revisions.
+The repository includes `.codex-plugin/plugin.json` for plugin distribution.
+Restart Codex if locally installed Skills do not appear immediately. Plugin
+lifecycle hooks require a one-time Codex trust review before they can run.
 
 ## Verification
 
@@ -119,6 +209,5 @@ python skills/knowledge-graph-view/scripts/knowledge_graph.py --knowledge-root .
 python -m unittest discover -s tests -v
 ```
 
-Never commit passwords, tokens, private keys, raw conversation archives, or full
-terminal dumps. A daily summary cannot include work that remains unsynchronized
-on an offline machine.
+Coherens gives every project a durable memory, every endpoint a shared operating
+picture, and every agent the context to move work forward without starting over.

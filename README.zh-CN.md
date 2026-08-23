@@ -2,104 +2,183 @@
 
 [English README](README.md)
 
-Coherens 用于让同一个项目的工程知识在 Windows、macOS、服务器、Docker
-工作区、Git 版本、Codex 和其他编程 Agent 之间保持连贯。Markdown 和 Git
-是事实来源；使用 VS Code 即可阅读和编辑，浏览器知识图谱只是生成视图。
+**面向多端、多项目 Agentic Engineering 的项目智能协同底座。**
+
+> 每一个项目，每一个端侧，共享同一个连贯的智能层。
+
+代码仓库保存“发生了什么变化”，Coherens 保存“项目从变化中学到了什么”：
+为什么做出某项决策、它适用于哪个环境、由哪个版本验证、此前经历过哪些失败，
+以及下一个 Agent 继续工作时真正需要知道什么。
+
+Coherens 将工作站、服务器、容器、分支、版本和编程 Agent 中分散的项目信息，
+统一为持久、可治理的知识体系，让每一次分散执行最终汇聚为持续增值的项目智能。
+
+## 现代工程缺失的关键一层
+
+今天的工程活动早已不再局限于一台电脑、一个仓库。一个项目可能在 Windows
+完成前期开发，在 macOS 进行集成，再进入 GPU 容器完成训练与推理；个人和
+团队同时推进多个项目，而 Codex 等 Agent 在每个新环境中拥有的上下文并不
+相同。
+
+Git 可以移动代码，却无法携带项目完整的操作记忆；聊天记录可以保存对话，
+却无法形成具有版本边界和可信来源的项目知识；传统文档可以积累页面，却不会
+持续协调端侧状态、项目身份、版本语义和 Agent 交接。
+
+Coherens 正是这层长期缺失的项目智能基础设施。
+
+## Coherens 带来的核心价值
+
+| 核心能力 | 产品价值 |
+| --- | --- |
+| 多端连续性 | 项目可以在 Windows、macOS、Linux、服务器和 Docker 之间延续，不再重复重建理解。 |
+| 多项目智能 | 每个项目保持独立身份，同时在整个工程组合中持续积累可复用知识。 |
+| 版本可信语义 | 将知识绑定到仓库、分支、版本轨道、工作区和经过验证的 Git 提交。 |
+| Agent 自主运营 | 用户只表达目标，由 Codex 完成发现、配置、注册、同步、校验和反馈。 |
+| 精准上下文路由 | 只读取当前任务所需的最小上下文包，而不是每次扫描整个项目或 Vault。 |
+| 可治理知识积累 | 明确区分原始进度、端侧状态、环境差异、版本知识、操作手册和长期决策。 |
+| 可审计协同 | 以 Markdown 和 Git 实现可读变更、确定性校验、来源追踪、回滚与协作。 |
+
+## 不是另一个笔记软件，而是项目智能协同网络
+
+Coherens 不替代 Git、编辑器、代码仓库或编程 Agent。它通过稳定的项目身份
+和统一的知识模型，把这些原本彼此割裂的部分连接为一个连续的智能系统。
+
+```mermaid
+flowchart LR
+    subgraph E["执行端侧"]
+        WIN["Windows 工作站"]
+        MAC["macOS 工作站"]
+        GPU["GPU 服务器"]
+        DOC["Docker 工作区"]
+    end
+
+    subgraph C["Coherens 项目智能协同底座"]
+        ID["身份注册中心"]
+        VAULT["Git 知识 Vault"]
+        ROUTER["精准上下文路由"]
+        VALIDATE["校验与来源追踪"]
+    end
+
+    subgraph A["Agentic Engineering"]
+        CODEX["Codex"]
+        OTHER["其他编程 Agent"]
+    end
+
+    E --> ID
+    ID --> VAULT
+    VAULT --> ROUTER
+    VAULT --> VALIDATE
+    ROUTER --> A
+    A --> VAULT
+```
+
+由此形成持续运转的项目智能闭环：
+
+1. 工作在最适合当前任务的端侧发生。
+2. Agent 在不读取云端 Vault 的情况下记录精简本地进度。
+3. 显式同步将本地进度转换为带版本依据的证据。
+4. 经过整理的结果沉淀为可复用知识、决策和操作手册。
+5. 下一个端侧或 Agent 只获得完成任务真正需要的上下文。
+
+每完成一次任务，项目都会变得更容易理解、运行、迁移和演进。
+
+## 为高摩擦工程场景而生
+
+- 在 Windows 和 macOS 之间迁移开发，不丢失决策，也不重新分析整个项目。
+- 将代码传递到 Docker 或 GPU 服务器时，同时获得正确版本、环境约束、操作
+  手册和历史失败记录。
+- 同时维护私有、实验、生产和开源版本，不混淆各自的前提与边界。
+- 并行推进多个项目，并根据已同步证据生成项目级每日汇总。
+- 在不同编程 Agent 之间交接工作，不依赖彼此不兼容的对话记忆。
+- 保存源代码本身无法表达的设计理由、实践经验和操作知识。
+
+## 真正的 Agent-first
+
+Coherens 不是一套需要用户学习和记忆的流程。用户只表达目标，Agent 负责发现
+并运营整个过程。
+
+第一次配置只需要一句话：
+
+```text
+请从 https://github.com/ChengxiSHE/Coherens.git 配置 Coherens，并完成全部检查。
+```
+
+专用的 `coherens-setup` Skill 固定保存官方仓库地址，并要求 Codex 自动完成：
+
+1. 检查 Git、Python、Codex 插件能力、网络连接和 GitHub 身份认证。
+2. 安装并验证官方 Coherens 插件。
+3. 查找或创建私有 `Coherens-Vault` 仓库。
+4. 为当前电脑、服务器或容器注册稳定身份。
+5. 使用 `doctor` 诊断环境并解决所有可自动处理的问题。
+6. 判断当前 Git 项目是否需要接入。
+7. 汇报已完成工作，只在身份认证、权限确认或真正存在歧义时请求用户操作。
+
+安装完成后，用户继续描述真正的工程目标即可：
+
+```text
+在 GPU 服务器上继续当前项目。
+根据当前私有版本准备开源发布。
+同步今天所有活跃项目的进展。
+生成项目知识图谱。
+```
+
+轻量级 `SessionStart` Hook 只检查本地就绪标记，不拉取或读取 Vault。当发现
+缺少设备配置或项目注册时，它会向 Codex 提供必要的流程信息，让 Codex 在
+相关任务中主动完成处理。
+
+## 持续复利的知识体系
+
+Coherens 根据所有权和持久性划分信息，使 Vault 在长期增长后仍然保持准确：
+
+| 知识层 | 用途 |
+| --- | --- |
+| `PROGRESS.md` | 轻量、本地、追加式工作证据。 |
+| `workspaces/` | 每台已注册电脑、服务器或容器的当前状态。 |
+| `environments/` | 操作系统、硬件、容器与运行时差异。 |
+| `versions/` | 分支、发布、实验、私有和开源版本知识。 |
+| `runbooks/` | 带有前置条件和验证步骤的可重复操作流程。 |
+| `decisions/` | 长期决策、理由、替代方案和生效提交。 |
+| `common/` | 在相关端侧和版本中得到验证的公共结论。 |
+| `context-packs/` | 面向具体任务、只包含必要知识的精简路由。 |
+
+`PROJECT_MAP.md` 是供人阅读的多项目地图，`registry.yaml` 提供稳定的机器
+路由，每个 `projects/<project-id>/index.md` 负责面向任务的上下文选择，
+Git 提交则把知识结论锚定到具体代码状态。
+
+## 信任与控制
+
+Coherens 从设计上建立明确边界：
+
+- 公开产品仓库和私有知识 Vault 使用两个独立 Git 仓库，永远不使用分支作为
+  隐私边界。
+- Markdown 保持人类可读，Git 保持完整来源记录。
+- 普通编码不会自动读取或同步云端知识。
+- 密码、令牌、私钥、原始对话归档和完整终端输出不得进入 Vault。
+- Vault 存在未提交修改或分支分叉时，同步将停止。
+- 只允许快进拉取、限定生成文件范围，并在提交和推送前执行校验。
+- 不猜测解决合并冲突、凭据问题、受保护分支或模糊的项目身份。
 
 ## 仓库模型
 
-使用两个仓库：
+Coherens 使用两个仓库：
 
-1. **公开的 `Coherens` 仓库：** 保存插件、Skills、脚本、数据结构、测试和
-   示例数据。唯一官方来源是
-   `https://github.com/ChengxiSHE/Coherens.git`。
-2. **私有的 `Coherens-Vault` 仓库：** 保存真实项目知识、工作区状态、版本
-   说明、决策、操作手册和进度证据。
+1. **公开产品仓库：** 插件、Skills、Hooks、确定性工具、数据结构、测试和示例。
+   `https://github.com/ChengxiSHE/Coherens.git`
+2. **私有智能 Vault：** 真实项目知识、端侧状态、版本记录、决策、操作手册和
+   进度证据。默认名称：`<github-owner>/Coherens-Vault`
 
-不要使用不同分支区分公开与私有内容。仓库权限才是安全边界。
+## 本地开发
 
-## Agent-first 操作方式
-
-Coherens 被封装为 Codex 插件。`project-knowledge` Skill 支持隐式调用，因此
-用户只需要描述目标，不需要记忆命令：
-
-- `配置 Coherens。`
-- `把当前项目接入 Coherens。`
-- `把当前项目的进度同步到知识库。`
-- `读取 Docker 训练任务需要的共享上下文。`
-- `汇总今天所有已同步项目的进展。`
-- `生成项目知识图谱。`
-
-Agent 会检查当前 Git 仓库、推断安全的默认值、调用确定性工具、校验结果，
-并报告项目 ID、工作区 ID、版本轨道、代码提交、Vault 提交和推送状态。
-
-用户不需要提前下载 Coherens、创建 Vault、选择目录或记忆安装步骤。Coherens
-发布到插件目录后，任意 Codex 都可以根据 `配置 Coherens` 发现并安装它。
-在本地开发阶段，Agent 也可以从上面的官方 GitHub 仓库完成引导。
-专用的 `coherens-setup` Skill 固定保存该地址，因此 Codex 不需要猜测哪个
-仓库才是官方来源。
-
-## 一次性设备配置
-
-收到第一次配置请求后，Agent 会检查 Git 和 GitHub 登录状态，查找现有的
-`Coherens-Vault`；如果 GitHub CLI 可用但 Vault 不存在，则自动创建私有
-仓库。只有账号无法安全推断或尚未登录时，才会请求用户确认。
-
-随后 Agent 会运行 `setup`，克隆或定位 Vault，并将纯本地设备配置保存在：
-
-- macOS/Linux：`~/.config/coherens/config.yaml`
-- Windows：`%APPDATA%\Coherens\config.yaml`
-
-空的私有 Git 仓库会被自动初始化。Git 凭据和提交者身份需要能够正常使用；
-Coherens 不会存储或绕过凭据。
-
-安装后，轻量级会话启动 Hook 只检查本地配置标记，不读取或拉取 Vault。
-如果缺少设备配置或项目注册，它会提醒 Codex 自动完成并解释下一步。
-Codex Hook 首次启用时需要进行一次信任确认。
-
-## 项目接入后生成的文件
-
-代码仓库中：
-
-```text
-AGENTS.md                  需要提交的进度记录规则
-.kb/project.yaml           需要提交的稳定项目身份
-.kb/workspace.local.yaml   忽略的本地设备身份
-PROGRESS.md                忽略的本地进度日志
-.kb/sync-state.json        忽略的增量同步游标
-```
-
-私有 Vault 中，Coherens 会注册项目和工作区、更新 `PROJECT_MAP.md`，并创建
-项目的公共知识、环境、工作区、版本、操作手册、决策、日志和上下文包目录。
-
-## 日常行为
-
-普通编码不会读取云端知识。`AGENTS.md` 只要求 Codex 在完成非简单任务后更新
-精简的本地 `PROGRESS.md`。只有用户提出接入、读取共享上下文、同步、汇总、
-校验或可视化目标时，才会访问云端。
-
-发布采用失败即停止策略：如果 Vault 存在未提交修改或分支分叉，Coherens
-会停止；否则使用仅快进拉取，只暂存当前项目的知识路径，校验 Markdown
-元数据和链接，然后提交并推送。它不会猜测如何解决合并冲突。
-
-## 从本地检出安装
-
-要求 Python 3.10 或更高版本、PyYAML 6.x 和 Git。安装依赖及随附 Skills：
+要求 Python 3.10 或更高版本、PyYAML 6.x 和 Git。
 
 ```text
 python -m pip install -r requirements.txt
 python tools/install_skills.py
 ```
 
-如果 Skills 没有立即出现，请重新启动 Codex。仓库还提供
-`.codex-plugin/plugin.json`，用于插件分发。
-
-## 事实来源与路由
-
-1. `PROJECT_MAP.md` 是供人阅读的项目地图。
-2. `registry.yaml` 保存稳定的项目、工作区和版本身份。
-3. `projects/<project-id>/index.md` 将任务路由到精简上下文包。
-4. Git 提交把知识结论绑定到具体代码版本。
+仓库包含用于插件分发的 `.codex-plugin/plugin.json`。本地安装 Skills 后如果
+没有立即显示，请重新启动 Codex。插件生命周期 Hook 首次运行前需要进行一次
+Codex 信任确认。
 
 ## 校验
 
@@ -109,5 +188,5 @@ python skills/knowledge-graph-view/scripts/knowledge_graph.py --knowledge-root .
 python -m unittest discover -s tests -v
 ```
 
-不要提交密码、令牌、私钥、原始对话归档或完整终端输出。某台离线设备上尚未
-同步的工作无法出现在当日汇总中。
+Coherens 让每个项目拥有持久记忆，让每个端侧共享同一幅运行图景，让每个 Agent
+都能获得推动工作继续前进的准确上下文，而不再从头开始。

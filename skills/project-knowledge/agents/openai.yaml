@@ -1,6 +1,6 @@
 interface:
   display_name: "Coherens"
-  short_description: "Keep project knowledge coherent across workspaces"
+  short_description: "Coordinate project intelligence across every endpoint"
   default_prompt: "把当前项目的进度同步到 Coherens，并完成校验。"
 policy:
   allow_implicit_invocation: true

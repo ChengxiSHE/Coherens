@@ -1,7 +1,7 @@
 {
   "name": "coherens",
   "version": "0.2.0",
-  "description": "Agent-driven project continuity across machines, repositories, versions, and coding agents.",
+  "description": "The project intelligence fabric for multi-endpoint, multi-project agentic engineering.",
   "author": {
     "name": "ChengxiSHE",
     "url": "https://github.com/ChengxiSHE"
@@ -12,8 +12,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Coherens",
-    "shortDescription": "Keep project knowledge coherent across every workspace",
-    "longDescription": "Registers projects and workspaces, routes compact context, synchronizes verified progress, and validates a Git-backed shared knowledge vault.",
+    "shortDescription": "One intelligence layer across every project and endpoint",
+    "longDescription": "Coherens unifies project identity, endpoint state, version context, operational knowledge, and agent handoffs into a governed Git-backed intelligence fabric.",
     "developerName": "ChengxiSHE",
     "category": "Productivity",
     "capabilities": ["Read", "Write", "Git"],
