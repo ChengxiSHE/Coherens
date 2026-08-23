@@ -1,6 +1,6 @@
 ---
 name: knowledge-graph-view
-description: Generate or refresh a self-contained interactive HTML graph from the Markdown project knowledge repository. Use only when the user explicitly asks to visualize, browse, inspect, or check the knowledge graph; do not use it for selecting authoritative context during ordinary project work.
+description: Generate or refresh Coherens' self-contained interactive HTML graph from the Markdown project knowledge Vault. Use when the user asks to visualize, browse, inspect, generate, refresh, or check the project knowledge graph; do not use it for selecting authoritative context during ordinary project work.
 ---
 
 # Knowledge Graph View
@@ -24,4 +24,3 @@ metadata, and Git commits remain authoritative.
 When generation exposes missing nodes or edges, run the project knowledge
 validator before editing source documents. Fix only relationships supported by
 the underlying Markdown and evidence.
-

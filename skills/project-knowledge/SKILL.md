@@ -1,9 +1,9 @@
 ---
 name: project-knowledge
-description: Locate, read, register, synchronize, validate, or summarize a Git-backed multi-workspace project knowledge repository. Use only when the user explicitly invokes this skill for shared project context or knowledge maintenance; ordinary coding tasks should use the local repository and PROGRESS.md without loading shared knowledge.
+description: Operate Coherens, the Git-backed shared project knowledge workflow. Use when the user asks in natural language to set up Coherens, connect or register the current project, synchronize or upload project progress, continue work across machines or agents, read shared project context, create a daily summary, validate the knowledge vault, or inspect project/workspace/version state. Do not trigger for ordinary coding that does not request shared context or synchronization.
 ---
 
-# Project Knowledge
+# Coherens Project Knowledge
 
 Keep Markdown and Git as the source of truth. Use the bundled deterministic
 script for identity, sync cursors, registry updates, summaries, and validation.
@@ -14,14 +14,28 @@ the knowledge repository.
 
 ## Route the request
 
+- **First machine setup:** Inspect Git and GitHub authentication. Ask only for
+  the private Vault repository when it cannot be inferred. If GitHub CLI is
+  authenticated, look for `Coherens-Vault` in the current account and create it
+  as a private repository when absent. Never create a public Vault. Run `setup`;
+  clone or initialize the Vault and verify its registry. This is the only
+  required machine-level setup. Run `doctor` afterward and resolve every
+  discoverable failure before reporting completion.
+- **Natural-language onboarding:** For requests such as "把当前项目接入知识库",
+  inspect the current Git repository and run `onboard`. Infer project ID,
+  repository, branch/version track, environment, and stable machine ID. Ask only
+  when two registered projects are plausible or a value cannot be discovered.
+- **Natural-language synchronization:** For requests such as "把项目 A 同步到仓库",
+  run `publish`. It performs a clean-Vault preflight, fast-forward pull,
+  registration/onboarding when needed, progress synchronization, validation,
+  scoped commit, and push. Inspect and report both code and Vault Git states.
 - **Read context:** Run `locate` from the code project. Open the returned project
   `index.md`, select the context pack that matches the task, and follow only its
   links. Compare every `verified_commit` with the local or target commit. Do not
   scan the complete knowledge repository unless the map or validation is broken.
-- **Connect a code project:** Run `bootstrap` only after the user identifies the
-  project ID, stable workspace ID, version track, local knowledge path, and
-  knowledge repository name. Review existing `AGENTS.md` before the script adds
-  the progress section.
+- **Connect a code project manually:** Use `bootstrap` only for overrides or
+  recovery. Prefer `onboard`, which derives safe defaults and registers both the
+  project and current workspace.
 - **Register a workspace:** Run `register-workspace`. Stable workspace IDs must
   be registered before sync.
 - **Sync progress:** Inspect the code and knowledge repository Git states first.
@@ -37,6 +51,10 @@ the knowledge repository.
 - **Validate:** Run `validate`. Fix broken routes, metadata, duplicate IDs, and
   links in authored Markdown. Registered workspaces without a synchronized state
   are warnings until strict validation is requested.
+- **Session reminder:** The bundled `SessionStart` hook may report missing local
+  setup or project registration. Treat it as routing context: explain what you
+  are checking, then perform the missing steps when relevant to the user's
+  request. Never load the Vault merely because the hook ran.
 
 ## Safety and boundaries
 
@@ -48,7 +66,10 @@ the knowledge repository.
   not proof that a conclusion is durable.
 - A machine cannot summarize unsynchronized progress from another offline
   machine. Report that gap explicitly.
+- Never bypass Git credentials, sandbox permissions, protected branches, merge
+  conflicts, or a dirty shared Vault. Stop with one concrete recovery action.
+- Do not expose raw hostnames in the Vault. Workspace IDs come from the local
+  machine configuration and must be sanitized.
 
 Read [references/layout.md](references/layout.md) when adding a new project,
 changing metadata, or deciding where knowledge belongs.
-

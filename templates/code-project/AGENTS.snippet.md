@@ -13,7 +13,7 @@ Keep each entry short and include:
 
 Do not record passwords, tokens, private keys, or full terminal output.
 Do not access or sync the shared knowledge repository unless the user explicitly
-invokes the project knowledge workflow.
+asks to connect, read, synchronize, summarize, validate, or visualize Coherens
+knowledge.
 
 If `PROGRESS.md` does not exist, create it from the project progress template.
-

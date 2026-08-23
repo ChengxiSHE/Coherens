@@ -7,7 +7,10 @@ import argparse
 import hashlib
 import json
 import os
+import platform
 import re
+import shutil
+import socket
 import subprocess
 import sys
 from collections import defaultdict
@@ -45,6 +48,8 @@ EXCLUDED_KNOWLEDGE_PARTS = {
     "tools",
     "__pycache__",
 }
+PRODUCT_NAME = "Coherens"
+CONFIG_ENV = "COHERENS_CONFIG"
 
 AGENTS_SECTION = """## Progress Log
 
@@ -55,8 +60,9 @@ commit, what changed and why, verification, unresolved issues, and whether the
 result should be promoted to shared knowledge.
 
 Do not record secrets or full terminal output. Do not access or sync the shared
-knowledge repository unless the user explicitly invokes the project knowledge
-workflow. If `PROGRESS.md` does not exist, create it.
+knowledge repository unless the user explicitly asks to connect, read,
+synchronize, summarize, validate, or visualize Coherens knowledge. If
+`PROGRESS.md` does not exist, create it.
 """
 
 PROGRESS_TEMPLATE = """# Project Progress
@@ -74,6 +80,81 @@ PROGRESS_TEMPLATE = """# Project Progress
 
 class KnowledgeError(RuntimeError):
     pass
+
+
+def config_path() -> Path:
+    explicit = os.environ.get(CONFIG_ENV)
+    if explicit:
+        return Path(explicit).expanduser().resolve()
+    if os.name == "nt":
+        base = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
+        return base / PRODUCT_NAME / "config.yaml"
+    base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    return base / PRODUCT_NAME.lower() / "config.yaml"
+
+
+def load_machine_config(required: bool = True) -> dict[str, Any]:
+    path = config_path()
+    if not path.exists():
+        if required:
+            raise KnowledgeError(
+                f"{PRODUCT_NAME} is not configured on this machine. Run setup first: {path}"
+            )
+        return {}
+    return load_yaml(path)
+
+
+def slugify(value: str, fallback: str = "project") -> str:
+    normalized = re.sub(r"[^a-z0-9]+", "-", value.strip().lower()).strip("-")
+    return normalized or fallback
+
+
+def require_identifier(value: str, label: str) -> str:
+    if not re.fullmatch(r"[a-z0-9][a-z0-9._-]*", value):
+        raise KnowledgeError(
+            f"Invalid {label} {value!r}; use lowercase letters, digits, dots, underscores, or hyphens"
+        )
+    return value
+
+
+def git_run(root: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
+    result = subprocess.run(
+        ["git", *args],
+        cwd=root,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if check and result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip() or "unknown Git error"
+        raise KnowledgeError(f"Git {' '.join(args)} failed in {root}: {detail}")
+    return result
+
+
+def git_repository(root: Path) -> str:
+    remote = git_run(root, "config", "--get", "remote.origin.url", check=False).stdout.strip()
+    if not remote:
+        return root.name
+    value = remote.removesuffix(".git").rstrip("/")
+    if ":" in value and not value.startswith(("http://", "https://")):
+        value = value.split(":", 1)[1]
+    else:
+        value = re.sub(r"^[a-z]+://[^/]+/", "", value)
+    return value.strip("/") or root.name
+
+
+def detect_environment() -> str:
+    if Path("/.dockerenv").exists() or os.environ.get("container"):
+        return "docker"
+    system = platform.system().lower()
+    return {"darwin": "macos", "windows": "windows", "linux": "linux"}.get(system, system or "unknown")
+
+
+def default_machine_id() -> str:
+    environment = detect_environment()
+    host = slugify(socket.gethostname(), "host")[:24]
+    return f"{environment}-{host}"
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
@@ -105,6 +186,13 @@ def find_project_root(start: Path) -> Path:
     raise KnowledgeError("No .kb/project.yaml found in this directory or its parents")
 
 
+def find_git_root(start: Path) -> Path:
+    result = git_run(start.resolve(), "rev-parse", "--show-toplevel", check=False)
+    if result.returncode != 0 or not result.stdout.strip():
+        raise KnowledgeError(f"Current directory is not inside a Git repository: {start}")
+    return Path(result.stdout.strip()).resolve()
+
+
 def resolve_project_root(value: str | None) -> Path:
     return find_project_root(Path(value or os.getcwd()))
 
@@ -126,9 +214,12 @@ def resolve_knowledge_root(
             if not candidate.is_absolute():
                 candidate = project_root / candidate
             return candidate.resolve()
+    configured = load_machine_config(required=False).get("vault_root")
+    if configured:
+        return Path(str(configured)).expanduser().resolve()
     raise KnowledgeError(
         "Knowledge root is unknown. Pass --knowledge-root, set PROJECT_KB_ROOT, "
-        "or configure .kb/workspace.local.yaml"
+        "configure .kb/workspace.local.yaml, or run Coherens setup"
     )
 
 
@@ -181,6 +272,322 @@ def add_gitignore_entries(project_root: Path) -> None:
     if missing:
         prefix = "" if not existing or existing.endswith("\n") else "\n"
         write_text(path, existing + prefix + "\n".join(missing) + "\n")
+
+
+def command_setup(args: argparse.Namespace) -> None:
+    path = Path(args.vault_root or (Path.home() / "Coherens-Vault")).expanduser().resolve()
+    repository = args.vault_repository or ""
+    if not path.exists():
+        if not repository:
+            raise KnowledgeError("The Vault does not exist; provide --vault-repository so it can be cloned")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        result = subprocess.run(
+            ["git", "clone", repository, str(path)],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise KnowledgeError(f"Could not clone the Vault: {result.stderr.strip()}")
+    if not (path / ".git").exists():
+        raise KnowledgeError(f"The Vault must be a Git repository: {path}")
+    initialized = False
+    if not (path / "registry.yaml").exists():
+        entries = [item for item in path.iterdir() if item.name != ".git"]
+        if entries:
+            raise KnowledgeError(f"Not a Coherens Vault (registry.yaml is missing): {path}")
+        registry = {"schema_version": 1, "projects": {}}
+        write_yaml(path / "registry.yaml", registry)
+        render_project_map(path, registry)
+        git_run(path, "add", "registry.yaml", "PROJECT_MAP.md")
+        git_run(path, "commit", "-m", "coherens: initialize vault")
+        initialized = True
+        remote = git_run(path, "config", "--get", "remote.origin.url", check=False).stdout.strip()
+        branch = git_value(path, "branch", "--show-current", default="")
+        if remote and branch:
+            git_run(path, "push", "-u", "origin", branch)
+    machine_id = slugify(args.machine_id or default_machine_id(), "workspace")
+    data = {
+        "schema_version": 1,
+        "machine_id": machine_id,
+        "environment": detect_environment(),
+        "vault_root": str(path),
+        "vault_repository": repository or git_repository(path),
+    }
+    target = config_path()
+    write_yaml(target, data)
+    print(json.dumps({"config": str(target), "initialized": initialized, **data}, ensure_ascii=False, indent=2))
+
+
+def command_doctor(args: argparse.Namespace) -> None:
+    config = load_machine_config(required=False)
+    vault_value = args.knowledge_root or config.get("vault_root")
+    vault = Path(str(vault_value)).expanduser().resolve() if vault_value else None
+    git_available = shutil.which("git") is not None
+    project_root = None
+    if git_available:
+        start = Path(args.project_root or os.getcwd()).expanduser().resolve()
+        candidate = git_run(start, "rev-parse", "--show-toplevel", check=False)
+        if candidate.returncode == 0 and candidate.stdout.strip():
+            project_root = Path(candidate.stdout.strip()).resolve()
+    gh = shutil.which("gh")
+    gh_auth = False
+    if gh:
+        gh_auth = subprocess.run(
+            [gh, "auth", "status"],
+            text=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        ).returncode == 0
+    checks = {
+        "git_available": git_available,
+        "github_cli_available": gh is not None,
+        "github_authenticated": gh_auth,
+        "machine_configured": bool(config),
+        "machine_id": config.get("machine_id"),
+        "vault_root": str(vault) if vault else None,
+        "vault_exists": bool(vault and vault.exists()),
+        "vault_is_git": bool(vault and (vault / ".git").exists()),
+        "vault_has_registry": bool(vault and (vault / "registry.yaml").exists()),
+        "current_project_root": str(project_root) if project_root else None,
+        "current_project_connected": bool(project_root and (project_root / ".kb" / "project.yaml").exists()),
+    }
+    required = [
+        "git_available",
+        "machine_configured",
+        "vault_exists",
+        "vault_is_git",
+        "vault_has_registry",
+    ]
+    checks["ready"] = all(bool(checks[key]) for key in required)
+    if not checks["git_available"]:
+        checks["next_action"] = "Install Git"
+    elif not checks["machine_configured"]:
+        checks["next_action"] = "Run Coherens setup"
+    elif not checks["vault_has_registry"]:
+        checks["next_action"] = "Repair or initialize the private Vault"
+    elif project_root and not checks["current_project_connected"]:
+        checks["next_action"] = "Onboard the current project when shared context or sync is requested"
+    else:
+        checks["next_action"] = "None"
+    print(json.dumps(checks, ensure_ascii=False, indent=2))
+
+
+def collection_document(project_id: str, name: str, title: str, body: str) -> str:
+    meta = {
+        "type": "collection",
+        "id": f"{project_id}-{name}",
+        "title": title,
+        "project": project_id,
+        "status": "active",
+    }
+    return frontmatter_text(meta, f"# {title}\n\n{body}")
+
+
+def render_project_map(knowledge_root: Path, registry: dict[str, Any]) -> None:
+    rows = []
+    for project_id, project in sorted((registry.get("projects") or {}).items()):
+        tracks = ", ".join(f"`{item}`" for item in project.get("version_tracks") or [])
+        workspaces = ", ".join(f"`{item}`" for item in (project.get("workspaces") or {}))
+        entry = str(project.get("knowledge_entry", f"projects/{project_id}/index.md"))
+        rows.append(
+            f"| {project.get('title', project_id)} | [{project_id}]({entry}) | "
+            f"`{project.get('repository', 'unknown')}` | {tracks} | {workspaces} |"
+        )
+    meta = {"type": "map", "id": "project-map", "title": "Project Map", "status": "active"}
+    table = "\n".join(rows) or "| No projects registered | - | - | - | - |"
+    body = f"""# Project Map
+
+Machine routing is defined in [`registry.yaml`](registry.yaml).
+
+## Active projects
+
+| Project | Knowledge entry | Repository | Tracks | Workspaces |
+| --- | --- | --- | --- | --- |
+{table}
+
+## Reading rule
+
+Start at the matching project index. Read the smallest context pack for the task,
+then follow only its linked environment, version, runbook, and decision documents.
+"""
+    write_text(knowledge_root / "PROJECT_MAP.md", frontmatter_text(meta, body))
+
+
+def scaffold_project(
+    knowledge_root: Path,
+    registry: dict[str, Any],
+    project_id: str,
+    title: str,
+    repository: str,
+    version_track: str,
+) -> None:
+    projects = registry.setdefault("projects", {})
+    project = projects.setdefault(
+        project_id,
+        {
+            "title": title,
+            "repository": repository,
+            "knowledge_entry": f"projects/{project_id}/index.md",
+            "default_version_track": version_track,
+            "version_tracks": [],
+            "workspaces": {},
+        },
+    )
+    if repository and project.get("repository") not in (None, "", repository):
+        raise KnowledgeError(
+            f"Project {project_id} is already bound to {project.get('repository')}, not {repository}"
+        )
+    tracks = project.setdefault("version_tracks", [])
+    if version_track not in tracks:
+        tracks.append(version_track)
+
+    root = knowledge_root / "projects" / project_id
+    root.mkdir(parents=True, exist_ok=True)
+    manifest_path = root / "manifest.yaml"
+    manifest = load_yaml(manifest_path) if manifest_path.exists() else {}
+    manifest.update(
+        {
+            "schema_version": 1,
+            "project_id": project_id,
+            "repository": repository,
+            "default_version_track": project.get("default_version_track", version_track),
+            "knowledge_entry": "index.md",
+        }
+    )
+    manifest.setdefault("context_packs", {})
+    write_yaml(manifest_path, manifest)
+    index_meta = {
+        "type": "project",
+        "id": project_id,
+        "title": title,
+        "project": project_id,
+        "status": "active",
+    }
+    index_body = f"""# {title}
+
+## Read by task
+
+| Task | Read first |
+| --- | --- |
+| Continue development | [Version tracks](versions/index.md), then relevant common knowledge |
+| Work on another machine | [Workspace states](workspaces/index.md) |
+| Investigate a past change | [Progress evidence](logs/index.md) |
+
+## Knowledge areas
+
+- [Common knowledge](common/index.md)
+- [Environment differences](environments/index.md)
+- [Workspace states](workspaces/index.md)
+- [Version tracks](versions/index.md)
+- [Runbooks](runbooks/index.md)
+- [Decisions](decisions/index.md)
+- [Progress evidence](logs/index.md)
+- [Context packs](context-packs/index.md)
+"""
+    if not (root / "index.md").exists():
+        write_text(root / "index.md", frontmatter_text(index_meta, index_body))
+    collections = {
+        "common": ("Common knowledge", "Store only reusable conclusions verified beyond one workspace."),
+        "environments": ("Environment differences", "Record operating-system, container, hardware, and runtime differences."),
+        "workspaces": ("Workspace states", "Workspace files are refreshed by Coherens synchronization."),
+        "versions": ("Version tracks", "Track branch or release-specific state without redefining project identity."),
+        "runbooks": ("Runbooks", "Store repeatable operational procedures."),
+        "decisions": ("Decisions", "Store durable decisions with rationale and evidence."),
+        "logs": ("Progress evidence", "Progress logs are append-only synchronization evidence."),
+        "context-packs": ("Context packs", "Route tasks to the smallest sufficient set of documents."),
+    }
+    for directory, (collection_title, body) in collections.items():
+        index = root / directory / "index.md"
+        if not index.exists():
+            write_text(index, collection_document(project_id, directory, collection_title, body))
+    version_path = root / "versions" / f"{slugify(version_track)}.md"
+    if not version_path.exists():
+        meta = {
+            "type": "version",
+            "id": f"{project_id}-version-{slugify(version_track)}",
+            "title": f"{title} {version_track}",
+            "project": project_id,
+            "version_scope": [version_track],
+            "status": "active",
+        }
+        write_text(
+            version_path,
+            frontmatter_text(meta, f"# {version_track}\n\nNo shared version-specific conclusions recorded yet."),
+        )
+
+
+def infer_project_id(registry: dict[str, Any], repository: str, root_name: str) -> str:
+    matches = [
+        project_id
+        for project_id, project in (registry.get("projects") or {}).items()
+        if str(project.get("repository", "")).lower() == repository.lower()
+    ]
+    if len(matches) == 1:
+        return str(matches[0])
+    if len(matches) > 1:
+        raise KnowledgeError(f"Repository {repository} matches multiple registered projects")
+    return slugify(repository.rsplit("/", 1)[-1] or root_name)
+
+
+def onboard_project(args: argparse.Namespace) -> dict[str, str]:
+    project_root = find_git_root(Path(args.project_root or os.getcwd()))
+    knowledge_root = resolve_knowledge_root(args.knowledge_root)
+    registry_path = knowledge_root / "registry.yaml"
+    registry = load_yaml(registry_path)
+    machine = load_machine_config(required=False)
+    repository = args.repository or git_repository(project_root)
+    project_id = require_identifier(
+        args.project_id or infer_project_id(registry, repository, project_root.name), "project ID"
+    )
+    branch = git_value(project_root, "branch", "--show-current", default="main")
+    version_track = args.version_track or branch or "main"
+    workspace_id = require_identifier(
+        slugify(args.workspace_id or machine.get("machine_id") or default_machine_id(), "workspace"),
+        "workspace ID",
+    )
+    environment = args.environment or machine.get("environment") or detect_environment()
+    title = args.title or project_root.name
+    config = project_root / ".kb" / "project.yaml"
+    if config.exists() and not args.force:
+        current = load_yaml(config)
+        if current.get("project_id") != project_id:
+            raise KnowledgeError(
+                f"Code project is already connected to {current.get('project_id')}; use --force only after review"
+            )
+    scaffold_project(knowledge_root, registry, project_id, title, repository, version_track)
+    project = registry["projects"][project_id]
+    project.setdefault("workspaces", {})[workspace_id] = {
+        "environment": environment,
+        "role": args.role,
+        "status": "active",
+    }
+    write_yaml(registry_path, registry)
+    render_project_map(knowledge_root, registry)
+    bootstrap_args = argparse.Namespace(
+        project_root=str(project_root),
+        project_id=project_id,
+        workspace_id=workspace_id,
+        version_track=version_track,
+        knowledge_root=str(knowledge_root),
+        knowledge_repository=machine.get("vault_repository") or git_repository(knowledge_root),
+        force=bool(args.force or config.exists()),
+    )
+    command_bootstrap(bootstrap_args)
+    return {
+        "project_root": str(project_root),
+        "knowledge_root": str(knowledge_root),
+        "project_id": project_id,
+        "workspace_id": workspace_id,
+        "version_track": version_track,
+        "repository": repository,
+    }
+
+
+def command_onboard(args: argparse.Namespace) -> None:
+    print(json.dumps(onboard_project(args), ensure_ascii=False, indent=2))
 
 
 def command_bootstrap(args: argparse.Namespace) -> None:
@@ -536,9 +943,73 @@ def command_validate(args: argparse.Namespace) -> None:
     print(f"Validated {len(markdown_paths)} Markdown files with {len(warnings)} warning(s)")
 
 
+def command_publish(args: argparse.Namespace) -> None:
+    knowledge_root = resolve_knowledge_root(args.knowledge_root)
+    if not (knowledge_root / ".git").exists():
+        raise KnowledgeError(f"The Vault is not a Git repository: {knowledge_root}")
+    initial_status = git_run(knowledge_root, "status", "--porcelain").stdout.strip()
+    if initial_status:
+        raise KnowledgeError(
+            "The shared Vault has uncommitted changes. Commit, stash, or discard them before publishing."
+        )
+    remote = git_run(knowledge_root, "config", "--get", "remote.origin.url", check=False).stdout.strip()
+    if not args.no_push and not remote:
+        raise KnowledgeError("The shared Vault has no origin remote; configure one or use --no-push")
+    branch = git_value(knowledge_root, "branch", "--show-current", default="")
+    if not args.no_push and not branch:
+        raise KnowledgeError("The shared Vault is on a detached HEAD; check out a branch before publishing")
+    if remote and branch:
+        git_run(knowledge_root, "pull", "--ff-only")
+
+    identity = onboard_project(args)
+    sync_args = argparse.Namespace(
+        project_root=identity["project_root"], knowledge_root=identity["knowledge_root"]
+    )
+    command_sync(sync_args)
+    command_validate(argparse.Namespace(knowledge_root=identity["knowledge_root"], strict=False))
+
+    git_run(knowledge_root, "add", "PROJECT_MAP.md", "registry.yaml", f"projects/{identity['project_id']}")
+    staged = git_run(knowledge_root, "diff", "--cached", "--quiet", check=False)
+    committed = False
+    if staged.returncode != 0:
+        message = args.message or f"coherens: sync {identity['project_id']}/{identity['workspace_id']}"
+        git_run(knowledge_root, "commit", "-m", message)
+        committed = True
+    pushed = False
+    if not args.no_push and committed:
+        git_run(knowledge_root, "push", "origin", branch)
+        pushed = True
+    result = {**identity, "committed": committed, "pushed": pushed}
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
+
+    setup = sub.add_parser("setup", help="Configure this machine and clone or locate the private Vault")
+    setup.add_argument("--vault-root")
+    setup.add_argument("--vault-repository")
+    setup.add_argument("--machine-id")
+    setup.set_defaults(func=command_setup)
+
+    doctor = sub.add_parser("doctor", help="Check machine, GitHub, Vault, and current-project readiness")
+    doctor.add_argument("--project-root")
+    doctor.add_argument("--knowledge-root")
+    doctor.set_defaults(func=command_doctor)
+
+    onboard = sub.add_parser("onboard", help="Infer, register, and connect the current Git project")
+    onboard.add_argument("--project-root")
+    onboard.add_argument("--knowledge-root")
+    onboard.add_argument("--project-id")
+    onboard.add_argument("--title")
+    onboard.add_argument("--repository")
+    onboard.add_argument("--workspace-id")
+    onboard.add_argument("--version-track")
+    onboard.add_argument("--environment")
+    onboard.add_argument("--role", default="development")
+    onboard.add_argument("--force", action="store_true")
+    onboard.set_defaults(func=command_onboard)
 
     bootstrap = sub.add_parser("bootstrap", help="Connect a code project to the knowledge repository")
     bootstrap.add_argument("--project-root", required=True)
@@ -580,6 +1051,21 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("--knowledge-root", required=True)
     validate.add_argument("--strict", action="store_true")
     validate.set_defaults(func=command_validate)
+
+    publish = sub.add_parser("publish", help="Onboard if needed, sync, validate, commit, and push")
+    publish.add_argument("--project-root")
+    publish.add_argument("--knowledge-root")
+    publish.add_argument("--project-id")
+    publish.add_argument("--title")
+    publish.add_argument("--repository")
+    publish.add_argument("--workspace-id")
+    publish.add_argument("--version-track")
+    publish.add_argument("--environment")
+    publish.add_argument("--role", default="development")
+    publish.add_argument("--force", action="store_true")
+    publish.add_argument("--message")
+    publish.add_argument("--no-push", action="store_true")
+    publish.set_defaults(func=command_publish)
     return parser
 
 

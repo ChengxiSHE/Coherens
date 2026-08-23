@@ -1,7 +1,6 @@
 interface:
-  display_name: "Project Knowledge"
-  short_description: "Read, sync, and summarize shared project knowledge"
-  default_prompt: "Use $project-knowledge to synchronize this project's progress."
+  display_name: "Coherens"
+  short_description: "Keep project knowledge coherent across workspaces"
+  default_prompt: "把当前项目的进度同步到 Coherens，并完成校验。"
 policy:
-  allow_implicit_invocation: false
-
+  allow_implicit_invocation: true

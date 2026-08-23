@@ -1,0 +1,6 @@
+interface:
+  display_name: "Coherens Setup"
+  short_description: "Install and configure Coherens end to end"
+  default_prompt: "配置 Coherens，并完成环境检查。"
+policy:
+  allow_implicit_invocation: true

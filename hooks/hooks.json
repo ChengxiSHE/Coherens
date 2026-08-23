@@ -1,0 +1,20 @@
+{
+  "description": "Give Codex lightweight Coherens onboarding state without loading the shared Vault.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/hooks/coherens_session_start.py\"",
+            "commandWindows": "py -3 \"%PLUGIN_ROOT%\\hooks\\coherens_session_start.py\"",
+            "statusMessage": "Checking Coherens setup",
+            "additionalContextLimit": 500,
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

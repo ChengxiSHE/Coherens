@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install the bundled skills without overwriting existing installations."""
+"""Install the Coherens skills without overwriting existing installations."""
 
 from __future__ import annotations
 
@@ -16,14 +16,14 @@ def main() -> int:
         default=str(Path.home() / ".agents" / "skills"),
         help="Skill directory used by the target agent",
     )
-    parser.add_argument("--replace", action="store_true", help="Replace only these two installed skills")
+    parser.add_argument("--replace", action="store_true", help="Replace only the installed Coherens skills")
     args = parser.parse_args()
 
     root = Path(__file__).resolve().parents[1]
     source_root = root / "skills"
     target_root = Path(args.target).expanduser().resolve()
     target_root.mkdir(parents=True, exist_ok=True)
-    names = ["project-knowledge", "knowledge-graph-view"]
+    names = ["coherens-setup", "project-knowledge", "knowledge-graph-view"]
     for name in names:
         source = source_root / name
         target = target_root / name
@@ -39,4 +39,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

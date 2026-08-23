@@ -1,0 +1,27 @@
+{
+  "name": "coherens",
+  "version": "0.2.0",
+  "description": "Agent-driven project continuity across machines, repositories, versions, and coding agents.",
+  "author": {
+    "name": "ChengxiSHE",
+    "url": "https://github.com/ChengxiSHE"
+  },
+  "repository": "https://github.com/ChengxiSHE/Knowledge",
+  "license": "MIT",
+  "keywords": ["codex", "project-knowledge", "multi-host", "context", "git"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Coherens",
+    "shortDescription": "Keep project knowledge coherent across every workspace",
+    "longDescription": "Registers projects and workspaces, routes compact context, synchronizes verified progress, and validates a Git-backed shared knowledge vault.",
+    "developerName": "ChengxiSHE",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write", "Git"],
+    "defaultPrompt": [
+      "把当前项目接入 Coherens",
+      "把当前项目的进度同步到知识库",
+      "读取这个任务需要的共享上下文"
+    ],
+    "brandColor": "#176B5B"
+  }
+}
