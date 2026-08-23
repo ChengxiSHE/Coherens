@@ -43,52 +43,6 @@ Coherens is that missing coordination layer.
 | Governed knowledge accumulation | Separate raw progress, endpoint state, environment differences, version knowledge, runbooks, and durable decisions. |
 | Auditable synchronization | Use Markdown and Git for inspectable changes, deterministic validation, provenance, rollback, and collaboration. |
 
-## A shared intelligence fabric, not another notes app
-
-Coherens does not replace Git, your editor, your code repositories, or your
-coding agents. It connects them through a stable project identity and a common
-knowledge model.
-
-```mermaid
-flowchart LR
-    subgraph E["Execution endpoints"]
-        WIN["Windows workstation"]
-        MAC["macOS workstation"]
-        GPU["GPU server"]
-        DOC["Docker workspace"]
-    end
-
-    subgraph C["Coherens project intelligence fabric"]
-        ID["Identity registry"]
-        VAULT["Git-backed knowledge Vault"]
-        ROUTER["Precision context router"]
-        VALIDATE["Validation and provenance"]
-    end
-
-    subgraph A["Agentic engineering"]
-        CODEX["Codex"]
-        OTHER["Other coding agents"]
-    end
-
-    E --> ID
-    ID --> VAULT
-    VAULT --> ROUTER
-    VAULT --> VALIDATE
-    ROUTER --> A
-    A --> VAULT
-```
-
-The result is a continuous intelligence loop:
-
-1. Work happens on the endpoint best suited to the task.
-2. Agents record compact local progress without loading the cloud Vault.
-3. Explicit synchronization converts local progress into versioned evidence.
-4. Curated outcomes become reusable project knowledge, decisions, and runbooks.
-5. The next endpoint or agent receives only the context needed for its task.
-
-Every completed task makes the project easier to understand, operate, transfer,
-and evolve.
-
 ## Built for high-friction engineering workflows
 
 - Move development between Windows and macOS without losing decisions or

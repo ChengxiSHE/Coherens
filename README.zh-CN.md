@@ -38,50 +38,6 @@ Coherens 正是这层长期缺失的项目智能基础设施。
 | 可治理知识积累 | 明确区分原始进度、端侧状态、环境差异、版本知识、操作手册和长期决策。 |
 | 可审计协同 | 以 Markdown 和 Git 实现可读变更、确定性校验、来源追踪、回滚与协作。 |
 
-## 不是另一个笔记软件，而是项目智能协同网络
-
-Coherens 不替代 Git、编辑器、代码仓库或编程 Agent。它通过稳定的项目身份
-和统一的知识模型，把这些原本彼此割裂的部分连接为一个连续的智能系统。
-
-```mermaid
-flowchart LR
-    subgraph E["执行端侧"]
-        WIN["Windows 工作站"]
-        MAC["macOS 工作站"]
-        GPU["GPU 服务器"]
-        DOC["Docker 工作区"]
-    end
-
-    subgraph C["Coherens 项目智能协同底座"]
-        ID["身份注册中心"]
-        VAULT["Git 知识 Vault"]
-        ROUTER["精准上下文路由"]
-        VALIDATE["校验与来源追踪"]
-    end
-
-    subgraph A["Agentic Engineering"]
-        CODEX["Codex"]
-        OTHER["其他编程 Agent"]
-    end
-
-    E --> ID
-    ID --> VAULT
-    VAULT --> ROUTER
-    VAULT --> VALIDATE
-    ROUTER --> A
-    A --> VAULT
-```
-
-由此形成持续运转的项目智能闭环：
-
-1. 工作在最适合当前任务的端侧发生。
-2. Agent 在不读取云端 Vault 的情况下记录精简本地进度。
-3. 显式同步将本地进度转换为带版本依据的证据。
-4. 经过整理的结果沉淀为可复用知识、决策和操作手册。
-5. 下一个端侧或 Agent 只获得完成任务真正需要的上下文。
-
-每完成一次任务，项目都会变得更容易理解、运行、迁移和演进。
-
 ## 为高摩擦工程场景而生
 
 - 在 Windows 和 macOS 之间迁移开发，不丢失决策，也不重新分析整个项目。
