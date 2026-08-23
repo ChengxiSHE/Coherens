@@ -1,0 +1,5 @@
+schema_version: 1
+workspace_id: mac-dev-01
+version_track: main
+knowledge_root: /absolute/path/to/engineering-knowledge
+

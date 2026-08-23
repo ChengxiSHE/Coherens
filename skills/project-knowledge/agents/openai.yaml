@@ -1,0 +1,7 @@
+interface:
+  display_name: "Project Knowledge"
+  short_description: "Read, sync, and summarize shared project knowledge"
+  default_prompt: "Use $project-knowledge to synchronize this project's progress."
+policy:
+  allow_implicit_invocation: false
+

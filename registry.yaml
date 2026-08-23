@@ -1,0 +1,25 @@
+schema_version: 1
+projects:
+  project-a:
+    title: Project A
+    repository: example/project-a
+    knowledge_entry: projects/project-a/index.md
+    default_version_track: main
+    version_tracks:
+      - main
+      - experiment-v2
+      - opensource
+    workspaces:
+      win-dev-01:
+        environment: windows
+        role: development
+        status: active
+      mac-dev-01:
+        environment: macos
+        role: development
+        status: active
+      docker-gpu-01:
+        environment: docker
+        role: train-inference
+        status: active
+

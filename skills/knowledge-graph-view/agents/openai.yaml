@@ -1,0 +1,7 @@
+interface:
+  display_name: "Knowledge Graph View"
+  short_description: "Generate an interactive graph from Markdown knowledge"
+  default_prompt: "Use $knowledge-graph-view to generate the project knowledge graph."
+policy:
+  allow_implicit_invocation: false
+

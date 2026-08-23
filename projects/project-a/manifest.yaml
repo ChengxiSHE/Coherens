@@ -1,0 +1,8 @@
+schema_version: 1
+project_id: project-a
+repository: example/project-a
+default_version_track: main
+knowledge_entry: index.md
+context_packs:
+  docker-training: context-packs/docker-training.md
+
