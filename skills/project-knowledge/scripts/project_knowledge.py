@@ -895,7 +895,7 @@ def command_validate(args: argparse.Namespace) -> None:
         path
         for path in knowledge_root.rglob("*.md")
         if not EXCLUDED_KNOWLEDGE_PARTS.intersection(path.relative_to(knowledge_root).parts)
-        and path.name != "README.md"
+        and not (path.parent == knowledge_root and path.name.startswith("README"))
     ]
     for path in sorted(markdown_paths):
         text = path.read_text(encoding="utf-8")

@@ -1,5 +1,7 @@
 # Coherens
 
+[Chinese README](README.zh-CN.md)
+
 Coherens keeps one project's engineering knowledge coherent across Windows,
 macOS, servers, Docker workspaces, Git versions, Codex, and other coding agents.
 Markdown and Git remain the source of truth; VS Code is enough for reading and
@@ -23,12 +25,12 @@ the security boundary.
 Coherens is packaged as a Codex plugin. Its `project-knowledge` Skill allows
 implicit invocation, so users speak in terms of intent rather than commands:
 
-- `配置 Coherens`
-- `把当前项目接入 Coherens`
-- `把当前项目的进度同步到知识库`
-- `读取 Docker 训练任务需要的共享上下文`
-- `汇总今天所有已同步项目的进展`
-- `生成项目知识图谱`
+- `Configure Coherens.`
+- `Connect the current project to Coherens.`
+- `Synchronize this project's progress to the knowledge Vault.`
+- `Load the shared context needed for Docker training.`
+- `Summarize today's progress for every synchronized project.`
+- `Generate the project knowledge graph.`
 
 The Agent inspects the current Git repository, infers safe defaults, invokes the
 deterministic tools, validates the result, and reports project ID, workspace ID,
@@ -37,7 +39,7 @@ version track, code commit, Vault commit, and push status.
 Users do not need to download Coherens first, create a Vault first, choose a
 folder, or remember setup steps. Once Coherens is published in a plugin
 directory, an arbitrary Codex can discover and install it from the request
-`配置 Coherens`. During local development, the Agent can bootstrap it from the
+`Configure Coherens`. During local development, the Agent can bootstrap it from the
 canonical GitHub repository above instead. The dedicated `coherens-setup` Skill
 contains this exact URL so Codex never has to guess which repository is official.
 

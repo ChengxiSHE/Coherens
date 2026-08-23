@@ -29,6 +29,14 @@ def run(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess[str]
 
 
 class WorkflowTest(unittest.TestCase):
+    def test_readme_languages_and_cross_links(self) -> None:
+        english = (ROOT / "README.md").read_text(encoding="utf-8")
+        chinese = (ROOT / "README.zh-CN.md").read_text(encoding="utf-8")
+        self.assertTrue(english.isascii())
+        self.assertIn("[Chinese README](README.zh-CN.md)", english)
+        self.assertIn("[English README](README.md)", chinese)
+        self.assertIn("配置 Coherens", chinese)
+
     def test_setup_skill_pins_canonical_repository(self) -> None:
         setup_skill = ROOT / "skills" / "coherens-setup" / "SKILL.md"
         content = setup_skill.read_text(encoding="utf-8")
