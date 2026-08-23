@@ -32,7 +32,7 @@ class WorkflowTest(unittest.TestCase):
     def test_setup_skill_pins_canonical_repository(self) -> None:
         setup_skill = ROOT / "skills" / "coherens-setup" / "SKILL.md"
         content = setup_skill.read_text(encoding="utf-8")
-        self.assertIn("https://github.com/ChengxiSHE/Knowledge.git", content)
+        self.assertIn("https://github.com/ChengxiSHE/Coherens.git", content)
         self.assertIn("must never be public", content)
 
     def test_setup_initializes_empty_private_vault(self) -> None:

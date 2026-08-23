@@ -11,7 +11,7 @@ Use two repositories:
 
 1. **Public `Coherens` repository:** plugin, Skills, scripts, schemas, tests, and
    example data. Its canonical source is
-   `https://github.com/ChengxiSHE/Knowledge.git`.
+   `https://github.com/ChengxiSHE/Coherens.git`.
 2. **Private `Coherens-Vault` repository:** real project knowledge, workspace
    states, version notes, decisions, runbooks, and progress evidence.
 

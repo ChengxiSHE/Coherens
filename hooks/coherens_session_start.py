@@ -40,7 +40,7 @@ def main() -> int:
             "Coherens is installed but this machine is not configured. On the first relevant "
             "request, proactively explain that you are initializing Coherens, then inspect Git "
             "and GitHub authentication. The canonical public source is "
-            "https://github.com/ChengxiSHE/Knowledge.git. Discover or create a private "
+            "https://github.com/ChengxiSHE/Coherens.git. Discover or create a private "
             "Coherens-Vault, register a "
             "stable machine ID, run Coherens setup and doctor, and report each result. Do not ask "
             "the user to perform discoverable steps; ask only for authentication or an ambiguous "

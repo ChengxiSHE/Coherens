@@ -8,7 +8,7 @@ description: Install, bootstrap, repair, or configure Coherens from its canonica
 Use this canonical public repository. Do not search for or guess another source:
 
 ```text
-https://github.com/ChengxiSHE/Knowledge.git
+https://github.com/ChengxiSHE/Coherens.git
 ```
 
 The product name is `Coherens`. The default private knowledge repository is
